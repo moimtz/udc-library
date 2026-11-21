@@ -1,0 +1,13 @@
+# --- Núcleo (obligatorio) ---
+numpy
+scikit-learn
+rdflib
+PyMuPDF
+httpx
+sentence-transformers      # requiere torch (ver README: instalar la versión CPU primero)
+
+# --- Opcionales ---
+py3langid                  # detección de idioma (Python puro, modelo incluido)
+langdetect                 # respaldo de idioma (si falta todo, se usa un detector por stopwords)
+gliner                     # NER zero-shot en CPU para autores/organizaciones (flag --ner)
+# OCR (flag --ocr): usa el programa Tesseract a través de PyMuPDF; no requiere paquete pip (ver README).

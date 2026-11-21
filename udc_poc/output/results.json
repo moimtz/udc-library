@@ -1,0 +1,2833 @@
+[
+ {
+  "file": "C:\\UDC Library\\udc_poc\\books\\A First Course in Differential Equations with Modeling - Zill (12th).pdf",
+  "sha1": "f6565af590abf7a03781a8d82550d78111e7bb07",
+  "pages": 481,
+  "scanned": false,
+  "ocr": false,
+  "item_type": {
+   "value": "book",
+   "source": "rules",
+   "confidence": 0.83,
+   "scores": {
+    "patent": 0,
+    "thesis": 0,
+    "report": 0,
+    "journalArticle": 0,
+    "conferencePaper": 0,
+    "book": 5,
+    "standard": 0,
+    "score": 0
+   },
+   "subtype": null
+  },
+  "fields": {
+   "title": {
+    "value": "Review of Differentiation",
+    "source": "layout",
+    "confidence": 0.65
+   },
+   "date": {
+    "value": "2024",
+    "source": "regex:copyright",
+    "confidence": 0.8
+   },
+   "language": {
+    "value": "en",
+    "source": "py3langid",
+    "confidence": 1.0
+   },
+   "numPages": {
+    "value": 481,
+    "source": "pdf",
+    "confidence": 0.5
+   }
+  },
+  "unmapped": {},
+  "identifiers": {},
+  "missing_critical": [
+   "creators"
+  ],
+  "doc_language": "en",
+  "classification": {
+   "suggestions": [
+    {
+     "rank": 1,
+     "udc": "517.9=111(02)",
+     "main": [
+      {
+       "code": "517.9",
+       "label": "Differential equations. Integral equations. Other functional equations. Finite differences. Calculus of variations. Functional analysis",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "51 Mathematics",
+        "517 Analysis",
+        "517.9 Differential equations. Integral equations. Other functional equations. Finite differences. Calculus of variations. Functional analysis"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.841,
+     "confidence": 0.21,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.525,
+      "sim_path_mean": 0.473,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "517 Analysis",
+       "51 Mathematics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 2,
+     "udc": "514.7=111(02)",
+     "main": [
+      {
+       "code": "514.7",
+       "label": "Differential geometry. Algebraic and analytic methods in geometry",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "51 Mathematics",
+        "514 Geometry",
+        "514.7 Differential geometry. Algebraic and analytic methods in geometry"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.797,
+     "confidence": 0.12,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.494,
+      "sim_path_mean": 0.447,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "514 Geometry",
+       "51 Mathematics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 3,
+     "udc": "535.4=111(02)",
+     "main": [
+      {
+       "code": "535.4",
+       "label": "Interference. Diffraction. Scattering by diffraction",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "535 Optics",
+        "535.4 Interference. Diffraction. Scattering by diffraction"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.795,
+     "confidence": 0.12,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.49,
+      "sim_path_mean": 0.45,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "535 Optics",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    }
+   ],
+   "low_confidence": true,
+   "mode": "default",
+   "neighbors_used": 0,
+   "note": "BAJA CONFIANZA: revisa manualmente.",
+   "_doc_embedding": "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",
+   "_candidates": [
+    {
+     "code": "517.9",
+     "feats": {
+      "sim": 0.5248265624046327,
+      "path": 0.47318755052983763,
+      "parent": 0.49480706155300147,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 1.0,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "514.7",
+     "feats": {
+      "sim": 0.4939830169081688,
+      "path": 0.44661116302013393,
+      "parent": 0.4193450570106506,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.3333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "535.4",
+     "feats": {
+      "sim": 0.49033985733985896,
+      "path": 0.4501222439110279,
+      "parent": 0.4479000732302666,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.25,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.35",
+     "feats": {
+      "sim": 0.468696054816246,
+      "path": 0.44736289978027344,
+      "parent": 0.4673994109034538,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.058823529411764705,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "535.5",
+     "feats": {
+      "sim": 0.4874978750944138,
+      "path": 0.4494117483496666,
+      "parent": 0.4479000732302666,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.16666666666666666,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "535.3",
+     "feats": {
+      "sim": 0.4843827426433563,
+      "path": 0.4486329652369022,
+      "parent": 0.4479000732302666,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.14285714285714285,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.93",
+     "feats": {
+      "sim": 0.46626477539539335,
+      "path": 0.4415047106146813,
+      "parent": 0.44053974449634553,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.04,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.75",
+     "feats": {
+      "sim": 0.4663636803627014,
+      "path": 0.4410950204730034,
+      "parent": 0.4383923888206482,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.041666666666666664,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "517",
+     "feats": {
+      "sim": 0.49480706155300147,
+      "path": 0.4559745465715726,
+      "parent": 0.4637649282813072,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.5,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.51",
+     "feats": {
+      "sim": 0.4606824979186058,
+      "path": 0.44275513827800755,
+      "parent": 0.4523741602897644,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.02631578947368421,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "543.6",
+     "feats": {
+      "sim": 0.4756165340542794,
+      "path": 0.4430249568074942,
+      "parent": 0.4513511925935745,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.07692307692307693,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.7",
+     "feats": {
+      "sim": 0.47570778280496595,
+      "path": 0.4394615422934294,
+      "parent": 0.43700628578662876,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.08333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "519.6",
+     "feats": {
+      "sim": 0.4882268249988556,
+      "path": 0.4537811343868574,
+      "parent": 0.4637649282813072,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.2,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.3",
+     "feats": {
+      "sim": 0.47783762961626053,
+      "path": 0.43358306102454663,
+      "parent": 0.4317659944295883,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "006.92",
+     "feats": {
+      "sim": 0.46796737462282184,
+      "path": 0.45322400480508807,
+      "parent": 0.47769905328750606,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05555555555555555,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.4",
+     "feats": {
+      "sim": 0.4690380811691284,
+      "path": 0.4476982496678829,
+      "parent": 0.45950587242841723,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.0625,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "510.6",
+     "feats": {
+      "sim": 0.46474534422159197,
+      "path": 0.4537411738187075,
+      "parent": 0.4771027728915215,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.037037037037037035,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "811",
+     "feats": {
+      "sim": 0.47571976333856586,
+      "path": 0.47173640578985215,
+      "parent": 0.4747480243444443,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.09090909090909091,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "006.91",
+     "feats": {
+      "sim": 0.46492123454809187,
+      "path": 0.4524624697864056,
+      "parent": 0.47769905328750606,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.038461538461538464,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.3",
+     "feats": {
+      "sim": 0.46681908518075943,
+      "path": 0.4471435006707907,
+      "parent": 0.45950587242841723,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.043478260869565216,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.3",
+     "feats": {
+      "sim": 0.4673994109034538,
+      "path": 0.4420296110212803,
+      "parent": 0.43348944187164307,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.047619047619047616,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.4",
+     "feats": {
+      "sim": 0.46775205284357074,
+      "path": 0.4374726098030806,
+      "parent": 0.43700628578662876,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05263157894736842,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.6",
+     "feats": {
+      "sim": 0.4631551161408425,
+      "path": 0.44622750841081144,
+      "parent": 0.45950587242841723,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.8",
+     "feats": {
+      "sim": 0.46135373264551166,
+      "path": 0.44577716253697874,
+      "parent": 0.45950587242841723,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02857142857142857,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.6",
+     "feats": {
+      "sim": 0.46706291586160664,
+      "path": 0.43088938258588316,
+      "parent": 0.4317659944295883,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.045454545454545456,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "543.4",
+     "feats": {
+      "sim": 0.462583538889885,
+      "path": 0.4397667080163956,
+      "parent": 0.4513511925935745,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.029411764705882353,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "510",
+     "feats": {
+      "sim": 0.4771027728915215,
+      "path": 0.45007311701774605,
+      "parent": 0.4637649282813072,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.1,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "006",
+     "feats": {
+      "sim": 0.47769905328750606,
+      "path": 0.4483095481991768,
+      "parent": 0.4341843739151955,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.1111111111111111,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "539.3",
+     "feats": {
+      "sim": 0.46295086890459064,
+      "path": 0.43635228909552104,
+      "parent": 0.42020924240350727,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.030303030303030304,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "549.7",
+     "feats": {
+      "sim": 0.46060542911291125,
+      "path": 0.43826752714812756,
+      "parent": 0.44733257889747624,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02564102564102564,
+      "beam": 0.0
+     }
+    }
+   ]
+  },
+  "warnings": []
+ },
+ {
+  "file": "C:\\UDC Library\\udc_poc\\books\\A First Course in Nomography - Brodetsky (1920).pdf",
+  "sha1": "1aad94c7a74e172d7f6753ade5b9abf350acc021",
+  "pages": 160,
+  "scanned": true,
+  "ocr": false,
+  "item_type": {
+   "value": "book",
+   "source": "rules",
+   "confidence": 0.33,
+   "scores": {
+    "patent": 0,
+    "thesis": 0,
+    "report": 0,
+    "journalArticle": 0,
+    "conferencePaper": 0,
+    "book": 2,
+    "standard": 0,
+    "score": 0
+   },
+   "subtype": null
+  },
+  "fields": {
+   "title": {
+    "value": "A first course in nomography",
+    "source": "pdfmeta",
+    "confidence": 0.5
+   },
+   "date": {
+    "value": "1981",
+    "source": "regex:año_más_frecuente",
+    "confidence": 0.25
+   },
+   "numPages": {
+    "value": 160,
+    "source": "pdf",
+    "confidence": 0.5
+   }
+  },
+  "unmapped": {},
+  "identifiers": {},
+  "missing_critical": [
+   "creators"
+  ],
+  "doc_language": null,
+  "classification": {
+   "suggestions": [
+    {
+     "rank": 1,
+     "udc": "9:8(02)",
+     "main": [
+      {
+       "code": "9",
+       "label": "GEOGRAPHY. BIOGRAPHY. HISTORY",
+       "path": [
+        "9 GEOGRAPHY. BIOGRAPHY. HISTORY"
+       ]
+      },
+      {
+       "code": "8",
+       "label": "LANGUAGE. LINGUISTICS. LITERATURE",
+       "path": [
+        "8 LANGUAGE. LINGUISTICS. LITERATURE"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.844,
+     "confidence": 0.17,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.55,
+      "sim_path_mean": 0.55,
+      "knn_vote": 0.0,
+      "en_haz": true,
+      "en_top_plano": true,
+      "segundo_tema": "8 LANGUAGE. LINGUISTICS. LITERATURE",
+      "retroceder_a": []
+     }
+    },
+    {
+     "rank": 2,
+     "udc": "8(02)",
+     "main": [
+      {
+       "code": "8",
+       "label": "LANGUAGE. LINGUISTICS. LITERATURE",
+       "path": [
+        "8 LANGUAGE. LINGUISTICS. LITERATURE"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.828,
+     "confidence": 0.13,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.539,
+      "sim_path_mean": 0.539,
+      "knn_vote": 0.0,
+      "en_haz": true,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": []
+     }
+    },
+    {
+     "rank": 3,
+     "udc": "548.5(02)",
+     "main": [
+      {
+       "code": "548.5",
+       "label": "Formation, growth and solution of crystals",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "54 Chemistry. Crystallography. Mineralogy",
+        "548 Crystallography",
+        "548.5 Formation, growth and solution of crystals"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.827,
+     "confidence": 0.13,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.501,
+      "sim_path_mean": 0.493,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "548 Crystallography",
+       "54 Chemistry. Crystallography. Mineralogy",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    }
+   ],
+   "low_confidence": true,
+   "mode": "default",
+   "neighbors_used": 0,
+   "note": "BAJA CONFIANZA: revisa manualmente.",
+   "_doc_embedding": "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",
+   "_candidates": [
+    {
+     "code": "9",
+     "feats": {
+      "sim": 0.5495584227822043,
+      "path": 0.5495584227822043,
+      "parent": 0.5495584227822043,
+      "depth": 1.0,
+      "knn": 0.0,
+      "flat": 1.0,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "8",
+     "feats": {
+      "sim": 0.5385988300496881,
+      "path": 0.5385988300496881,
+      "parent": 0.5385988300496881,
+      "depth": 1.0,
+      "knn": 0.0,
+      "flat": 0.5,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "548.5",
+     "feats": {
+      "sim": 0.5006190267476168,
+      "path": 0.4925121807239272,
+      "parent": 0.5118953748182816,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.7",
+     "feats": {
+      "sim": 0.4933834888718345,
+      "path": 0.4907032962549816,
+      "parent": 0.5118953748182816,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.07692307692307693,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548",
+     "feats": {
+      "sim": 0.5118953748182816,
+      "path": 0.48980989871603065,
+      "parent": 0.5200180248780684,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.2,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "549.2",
+     "feats": {
+      "sim": 0.4903887510299682,
+      "path": 0.4840827902609651,
+      "parent": 0.48840808868408203,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05555555555555555,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "547.1",
+     "feats": {
+      "sim": 0.49097740108316595,
+      "path": 0.4822268885644999,
+      "parent": 0.4803958318450234,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.058823529411764705,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "543.3",
+     "feats": {
+      "sim": 0.49339935454455286,
+      "path": 0.47550375759601593,
+      "parent": 0.4510813545097004,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.08333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "528.9",
+     "feats": {
+      "sim": 0.49345269528302277,
+      "path": 0.47259709848598996,
+      "parent": 0.48498827760869806,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.09090909090909091,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.4",
+     "feats": {
+      "sim": 0.48422137173739344,
+      "path": 0.48841276697137137,
+      "parent": 0.5118953748182816,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.030303030303030304,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "542.2",
+     "feats": {
+      "sim": 0.4873645630749789,
+      "path": 0.48206838965415955,
+      "parent": 0.4833746742118488,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.041666666666666664,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "003.6",
+     "feats": {
+      "sim": 0.4933829632672396,
+      "path": 0.46835183487697085,
+      "parent": 0.46230586008592084,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.07142857142857142,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "549.4",
+     "feats": {
+      "sim": 0.4855813898823478,
+      "path": 0.48288094997406,
+      "parent": 0.48840808868408203,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03571428571428571,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "542.7",
+     "feats": {
+      "sim": 0.4859415617856112,
+      "path": 0.4817126393318176,
+      "parent": 0.4833746742118488,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.037037037037037035,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "546.1",
+     "feats": {
+      "sim": 0.48599568280306726,
+      "path": 0.4804763326590711,
+      "parent": 0.47837532650340686,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.038461538461538464,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.1",
+     "feats": {
+      "sim": 0.4818666523153131,
+      "path": 0.48782408711585123,
+      "parent": 0.5118953748182816,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02564102564102564,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "549.7",
+     "feats": {
+      "sim": 0.4841742840680209,
+      "path": 0.4825291735204783,
+      "parent": 0.48840808868408203,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.029411764705882353,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "542.8",
+     "feats": {
+      "sim": 0.4846136136488481,
+      "path": 0.48138065229762683,
+      "parent": 0.4833746742118488,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "528.7",
+     "feats": {
+      "sim": 0.4894890405915,
+      "path": 0.4716061848131093,
+      "parent": 0.48498827760869806,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "929",
+     "feats": {
+      "sim": 0.48675638979131525,
+      "path": 0.5100794633229573,
+      "parent": 0.4939235773953524,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.04,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "544.7",
+     "feats": {
+      "sim": 0.4818421710621227,
+      "path": 0.4768320525234395,
+      "parent": 0.4679517177018252,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.025,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "54",
+     "feats": {
+      "sim": 0.5200180248780684,
+      "path": 0.47876716066490516,
+      "parent": 0.43751629645174195,
+      "depth": 2.0,
+      "knn": 0.0,
+      "flat": 0.3333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "929.7",
+     "feats": {
+      "sim": 0.48206554217772046,
+      "path": 0.508515847451759,
+      "parent": 0.4939235773953524,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.02631578947368421,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "599.32",
+     "feats": {
+      "sim": 0.48798377405513416,
+      "path": 0.4564153782346031,
+      "parent": 0.4504064158959822,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.045454545454545456,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "552",
+     "feats": {
+      "sim": 0.5014358000321821,
+      "path": 0.46793527585087397,
+      "parent": 0.4648537310686978,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.14285714285714285,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "92",
+     "feats": {
+      "sim": 0.4939235773953524,
+      "path": 0.5217410000887783,
+      "parent": 0.5495584227822043,
+      "depth": 2.0,
+      "knn": 0.0,
+      "flat": 0.1111111111111111,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "314",
+     "feats": {
+      "sim": 0.5136334191669117,
+      "path": 0.4810271777889945,
+      "parent": 0.4484209364110773,
+      "depth": 2.0,
+      "knn": 0.0,
+      "flat": 0.25,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "018",
+     "feats": {
+      "sim": 0.49011676419864997,
+      "path": 0.4837426470987724,
+      "parent": 0.5019712881608442,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.05263157894736842,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "097",
+     "feats": {
+      "sim": 0.4931446368044073,
+      "path": 0.47615975412455475,
+      "parent": 0.4761947366324338,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.06666666666666667,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "515.1",
+     "feats": {
+      "sim": 0.4936848716302351,
+      "path": 0.47171682932160114,
+      "parent": 0.48394931988282636,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.1,
+      "beam": 0.0
+     }
+    }
+   ]
+  },
+  "warnings": [
+   "PDF sin texto seleccionable (escaneado). Usa --ocr para extraer."
+  ]
+ },
+ {
+  "file": "C:\\UDC Library\\udc_poc\\books\\A First Course in the Finite Element Method - Logan (6th).pdf",
+  "sha1": "62dd0e742dd3525ff1fb308c438d2ac45d18360e",
+  "pages": 1003,
+  "scanned": false,
+  "ocr": false,
+  "item_type": {
+   "value": "book",
+   "source": "rules",
+   "confidence": 0.33,
+   "scores": {
+    "patent": 0,
+    "thesis": 0,
+    "report": 0,
+    "journalArticle": 0,
+    "conferencePaper": 0,
+    "book": 2,
+    "standard": 0,
+    "score": 0
+   },
+   "subtype": null
+  },
+  "fields": {
+   "title": {
+    "value": "A First Course in the Finite Element Method, 6th edition (2017)",
+    "source": "pdfmeta",
+    "confidence": 0.5
+   },
+   "creators": {
+    "value": [
+     {
+      "creatorType": "author",
+      "firstName": "Daryl L.",
+      "lastName": "Logan"
+     }
+    ],
+    "source": "pdfmeta",
+    "confidence": 0.4
+   },
+   "date": {
+    "value": "2019",
+    "source": "pdfmeta:creationDate",
+    "confidence": 0.15
+   },
+   "language": {
+    "value": "en",
+    "source": "py3langid",
+    "confidence": 1.0
+   },
+   "numPages": {
+    "value": 1003,
+    "source": "pdf",
+    "confidence": 0.5
+   }
+  },
+  "unmapped": {},
+  "identifiers": {},
+  "missing_critical": [],
+  "doc_language": "en",
+  "classification": {
+   "suggestions": [
+    {
+     "rank": 1,
+     "udc": "531.7:531.4=111(02)",
+     "main": [
+      {
+       "code": "531.7",
+       "label": "Measurement of geometric and mechanical quantities: instruments, methods and units",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "531 General mechanics. Mechanics of solid and rigid bodies",
+        "531.7 Measurement of geometric and mechanical quantities: instruments, methods and units"
+       ]
+      },
+      {
+       "code": "531.4",
+       "label": "Work. Weight. Mass. Friction. Passive resistance",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "531 General mechanics. Mechanics of solid and rigid bodies",
+        "531.4 Work. Weight. Mass. Friction. Passive resistance"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.838,
+     "confidence": 0.15,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.521,
+      "sim_path_mean": 0.475,
+      "knn_vote": 0.0,
+      "en_haz": true,
+      "en_top_plano": true,
+      "segundo_tema": "531.4 Work. Weight. Mass. Friction. Passive resistance",
+      "retroceder_a": [
+       "531 General mechanics. Mechanics of solid and rigid bodies",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 2,
+     "udc": "531.4=111(02)",
+     "main": [
+      {
+       "code": "531.4",
+       "label": "Work. Weight. Mass. Friction. Passive resistance",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "531 General mechanics. Mechanics of solid and rigid bodies",
+        "531.4 Work. Weight. Mass. Friction. Passive resistance"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.831,
+     "confidence": 0.14,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.514,
+      "sim_path_mean": 0.474,
+      "knn_vote": 0.0,
+      "en_haz": true,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "531 General mechanics. Mechanics of solid and rigid bodies",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 3,
+     "udc": "681.2=111(02)",
+     "main": [
+      {
+       "code": "681.2",
+       "label": "Instrument-making in general. Instrumentation. Measuring instruments and their manufacture. Balances. Weighing devices",
+       "path": [
+        "6 APPLIED SCIENCES. MEDICINE. TECHNOLOGY",
+        "68 Industries, crafts and trades for finished or assembled articles",
+        "681 Precision mechanisms and instruments",
+        "681.2 Instrument-making in general. Instrumentation. Measuring instruments and their manufacture. Balances. Weighing devices"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.825,
+     "confidence": 0.13,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.51,
+      "sim_path_mean": 0.471,
+      "knn_vote": 0.0,
+      "en_haz": true,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "681 Precision mechanisms and instruments",
+       "68 Industries, crafts and trades for finished or assembled articles",
+       "6 APPLIED SCIENCES. MEDICINE. TECHNOLOGY"
+      ]
+     }
+    }
+   ],
+   "low_confidence": true,
+   "mode": "default",
+   "neighbors_used": 0,
+   "note": "BAJA CONFIANZA: revisa manualmente.",
+   "_doc_embedding": "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",
+   "_candidates": [
+    {
+     "code": "531.7",
+     "feats": {
+      "sim": 0.5206963449716568,
+      "path": 0.4752907324582339,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 1.0,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "531.4",
+     "feats": {
+      "sim": 0.5142911806702615,
+      "path": 0.47368944138288505,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.3333333333333333,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "681.2",
+     "feats": {
+      "sim": 0.5096576794981957,
+      "path": 0.4707908440381289,
+      "parent": 0.4878882676362992,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.25,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "621.8",
+     "feats": {
+      "sim": 0.5144066080451012,
+      "path": 0.45475157424807544,
+      "parent": 0.46250001192092893,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.5,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "006.91",
+     "feats": {
+      "sim": 0.5039825171232224,
+      "path": 0.4665278542786837,
+      "parent": 0.5006066292524338,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.14285714285714285,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "662.8",
+     "feats": {
+      "sim": 0.5081381097435951,
+      "path": 0.45784231461584574,
+      "parent": 0.4708672106266022,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.2,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "539.4",
+     "feats": {
+      "sim": 0.5053763136267663,
+      "path": 0.461259250342846,
+      "parent": 0.4562275514006615,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.16666666666666666,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "517.9",
+     "feats": {
+      "sim": 0.5027217477560044,
+      "path": 0.461408169940114,
+      "parent": 0.4599271282553673,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.6",
+     "feats": {
+      "sim": 0.4984882444143295,
+      "path": 0.46973870731890205,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.0625,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "539.3",
+     "feats": {
+      "sim": 0.502634571492672,
+      "path": 0.46057381480932236,
+      "parent": 0.4562275514006615,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.1111111111111111,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.2",
+     "feats": {
+      "sim": 0.4975964292883873,
+      "path": 0.4695157535374165,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.058823529411764705,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "542.3",
+     "feats": {
+      "sim": 0.5001818120479584,
+      "path": 0.4620407961308956,
+      "parent": 0.45839041173458095,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.07142857142857142,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "532.6",
+     "feats": {
+      "sim": 0.49952337294816973,
+      "path": 0.46201051212847233,
+      "parent": 0.46508553922176366,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.06666666666666667,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.35",
+     "feats": {
+      "sim": 0.4858222588896752,
+      "path": 0.44487968593835825,
+      "parent": 0.4325052097439766,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.03333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.7",
+     "feats": {
+      "sim": 0.5016909122467041,
+      "path": 0.4515726502984762,
+      "parent": 0.46250001192092893,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.1,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "549.2",
+     "feats": {
+      "sim": 0.49684282243251804,
+      "path": 0.4611151818186045,
+      "parent": 0.45802694410085687,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05263157894736842,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.6",
+     "feats": {
+      "sim": 0.5011371657252313,
+      "path": 0.451434213668108,
+      "parent": 0.46250001192092893,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.08333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "006.92",
+     "feats": {
+      "sim": 0.4918604359030724,
+      "path": 0.46349733397364623,
+      "parent": 0.5006066292524338,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.5",
+     "feats": {
+      "sim": 0.4875833183526993,
+      "path": 0.4670124758034945,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.037037037037037035,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "536.6",
+     "feats": {
+      "sim": 0.4909189507365227,
+      "path": 0.4577167831361294,
+      "parent": 0.4565150454640388,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.043478260869565216,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.2",
+     "feats": {
+      "sim": 0.48788005560636527,
+      "path": 0.4608901750296355,
+      "parent": 0.47224750816822053,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.038461538461538464,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.8",
+     "feats": {
+      "sim": 0.48396079838275907,
+      "path": 0.4661068458110095,
+      "parent": 0.49703344851732256,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02702702702702703,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.9",
+     "feats": {
+      "sim": 0.4917145296931267,
+      "path": 0.44907855466008184,
+      "parent": 0.46250001192092893,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.047619047619047616,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.5",
+     "feats": {
+      "sim": 0.49131138324737555,
+      "path": 0.4489777680486441,
+      "parent": 0.46250001192092893,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.045454545454545456,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.7",
+     "feats": {
+      "sim": 0.48650719970464706,
+      "path": 0.4576743561774492,
+      "parent": 0.4545992642641068,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03571428571428571,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.7",
+     "feats": {
+      "sim": 0.48517788052558897,
+      "path": 0.4602146312594414,
+      "parent": 0.47224750816822053,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.030303030303030304,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "548.5",
+     "feats": {
+      "sim": 0.4857917964458466,
+      "path": 0.4574955053627491,
+      "parent": 0.4545992642641068,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03225806451612903,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "539.6",
+     "feats": {
+      "sim": 0.48565647900104525,
+      "path": 0.4563292916864157,
+      "parent": 0.4562275514006615,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "532.3",
+     "feats": {
+      "sim": 0.48421242684125904,
+      "path": 0.4581827756017447,
+      "parent": 0.46508553922176366,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02857142857142857,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "669.1",
+     "feats": {
+      "sim": 0.48978358656167986,
+      "path": 0.44641331024467945,
+      "parent": 0.44350571632385255,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.041666666666666664,
+      "beam": 0.0
+     }
+    }
+   ]
+  },
+  "warnings": []
+ },
+ {
+  "file": "C:\\UDC Library\\udc_poc\\books\\Advanced Engineering Electromagnetics - Balanis (3rd).pdf",
+  "sha1": "64e7750da50f208c561b89eba6ab5d8ebf785837",
+  "pages": 1119,
+  "scanned": false,
+  "ocr": false,
+  "item_type": {
+   "value": "book",
+   "source": "rules",
+   "confidence": 0.5,
+   "scores": {
+    "patent": 0,
+    "thesis": 0,
+    "report": 0,
+    "journalArticle": 0,
+    "conferencePaper": 0,
+    "book": 3,
+    "standard": 0,
+    "score": 0
+   },
+   "subtype": null
+  },
+  "fields": {
+   "title": {
+    "value": "Balanis' Advanced Engineering Electromagnetics",
+    "source": "pdfmeta",
+    "confidence": 0.5
+   },
+   "date": {
+    "value": "2024",
+    "source": "pdfmeta:creationDate",
+    "confidence": 0.15
+   },
+   "publisher": {
+    "value": "Wiley",
+    "source": "regex",
+    "confidence": 0.5
+   },
+   "language": {
+    "value": "en",
+    "source": "py3langid",
+    "confidence": 1.0
+   },
+   "numPages": {
+    "value": 1119,
+    "source": "pdf",
+    "confidence": 0.5
+   },
+   "ISBN": {
+    "value": "9781394180011",
+    "source": "regex",
+    "confidence": 0.9
+   }
+  },
+  "unmapped": {},
+  "identifiers": {
+   "isbn": "9781394180011"
+  },
+  "missing_critical": [
+   "creators"
+  ],
+  "doc_language": "en",
+  "classification": {
+   "suggestions": [
+    {
+     "rank": 1,
+     "udc": "537.3:537.6=111(02)",
+     "main": [
+      {
+       "code": "537.3",
+       "label": "Current electricity. Electric current. Electrokinetics",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "537 Electricity. Magnetism. Electromagnetism",
+        "537.3 Current electricity. Electric current. Electrokinetics"
+       ]
+      },
+      {
+       "code": "537.6",
+       "label": "Magnetism",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "537 Electricity. Magnetism. Electromagnetism",
+        "537.6 Magnetism"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.827,
+     "confidence": 0.14,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.507,
+      "sim_path_mean": 0.48,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": "537.6 Magnetism",
+      "retroceder_a": [
+       "537 Electricity. Magnetism. Electromagnetism",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 2,
+     "udc": "537.6=111(02)",
+     "main": [
+      {
+       "code": "537.6",
+       "label": "Magnetism",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "537 Electricity. Magnetism. Electromagnetism",
+        "537.6 Magnetism"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.826,
+     "confidence": 0.13,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.506,
+      "sim_path_mean": 0.48,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "537 Electricity. Magnetism. Electromagnetism",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    },
+    {
+     "rank": 3,
+     "udc": "537.2=111(02)",
+     "main": [
+      {
+       "code": "537.2",
+       "label": "Static electricity. Electrostatics",
+       "path": [
+        "5 MATHEMATICS. NATURAL SCIENCES",
+        "53 Physics",
+        "537 Electricity. Magnetism. Electromagnetism",
+        "537.2 Static electricity. Electrostatics"
+       ]
+      }
+     ],
+     "aux": {
+      "lang": {
+       "code": "=111",
+       "label": "English",
+       "source": "language-detection",
+       "confidence": 1.0,
+       "evidence": "idioma detectado: en"
+      },
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.825,
+     "confidence": 0.13,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.505,
+      "sim_path_mean": 0.48,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "537 Electricity. Magnetism. Electromagnetism",
+       "53 Physics",
+       "5 MATHEMATICS. NATURAL SCIENCES"
+      ]
+     }
+    }
+   ],
+   "low_confidence": true,
+   "mode": "default",
+   "neighbors_used": 0,
+   "note": "BAJA CONFIANZA: revisa manualmente.",
+   "_doc_embedding": "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",
+   "_candidates": [
+    {
+     "code": "537.3",
+     "feats": {
+      "sim": 0.5072112321853638,
+      "path": 0.4801244791597128,
+      "parent": 0.5227522104978561,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.5,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "537.6",
+     "feats": {
+      "sim": 0.5057070657610894,
+      "path": 0.4797484375536442,
+      "parent": 0.5227522104978561,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.25,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "537.2",
+     "feats": {
+      "sim": 0.5049692988395691,
+      "path": 0.47956399582326414,
+      "parent": 0.5227522104978561,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.2,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "537.8",
+     "feats": {
+      "sim": 0.5038992494344712,
+      "path": 0.47929648347198966,
+      "parent": 0.5227522104978561,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.16666666666666666,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "537",
+     "feats": {
+      "sim": 0.5227522104978561,
+      "path": 0.47109556148449583,
+      "parent": 0.4886459991335869,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 1.0,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.3",
+     "feats": {
+      "sim": 0.5068036466836929,
+      "path": 0.45797315351665024,
+      "parent": 0.4586502388119698,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.3333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "537.5",
+     "feats": {
+      "sim": 0.4960387229919434,
+      "path": 0.4773313518613577,
+      "parent": 0.5227522104978561,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.14285714285714285,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "623.5",
+     "feats": {
+      "sim": 0.4946616858243943,
+      "path": 0.4563316456973553,
+      "parent": 0.46422616839408876,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "681.2",
+     "feats": {
+      "sim": 0.4901615291833878,
+      "path": 0.45555653348565106,
+      "parent": 0.46820437610149385,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.1111111111111111,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "531.6",
+     "feats": {
+      "sim": 0.47879131436347966,
+      "path": 0.46262113675475125,
+      "parent": 0.48115875869989394,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.058823529411764705,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.6",
+     "feats": {
+      "sim": 0.48394705504179003,
+      "path": 0.4522590056061745,
+      "parent": 0.4586502388119698,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.07142857142857142,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "628.5",
+     "feats": {
+      "sim": 0.47983310371637344,
+      "path": 0.45505719594657423,
+      "parent": 0.47395695149898526,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.0625,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "531.4",
+     "feats": {
+      "sim": 0.471978834271431,
+      "path": 0.4609180167317391,
+      "parent": 0.48115875869989394,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.037037037037037035,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.2",
+     "feats": {
+      "sim": 0.47448729127645495,
+      "path": 0.45518509782850747,
+      "parent": 0.4557186260819435,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.6",
+     "feats": {
+      "sim": 0.4740798428654671,
+      "path": 0.4550832357257605,
+      "parent": 0.4557186260819435,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.047619047619047616,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.9",
+     "feats": {
+      "sim": 0.47373040914535525,
+      "path": 0.45499587729573254,
+      "parent": 0.4557186260819435,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.041666666666666664,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "681.7",
+     "feats": {
+      "sim": 0.4747617200016976,
+      "path": 0.4517065811902285,
+      "parent": 0.46820437610149385,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05263157894736842,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "533.1",
+     "feats": {
+      "sim": 0.472679515182972,
+      "path": 0.4547331538051367,
+      "parent": 0.4557186260819435,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.038461538461538464,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531.5",
+     "feats": {
+      "sim": 0.46892290562391287,
+      "path": 0.46015403456985954,
+      "parent": 0.48115875869989394,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03225806451612903,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.4",
+     "feats": {
+      "sim": 0.4735321432352066,
+      "path": 0.4496552776545287,
+      "parent": 0.4586502388119698,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.04,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "539.3",
+     "feats": {
+      "sim": 0.47398856431245806,
+      "path": 0.44831907637417323,
+      "parent": 0.4287532672286034,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.045454545454545456,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "517",
+     "feats": {
+      "sim": 0.48810244947671894,
+      "path": 0.45807817876338963,
+      "parent": 0.48424361199140553,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.09090909090909091,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "544.6",
+     "feats": {
+      "sim": 0.475980181992054,
+      "path": 0.4381924096494913,
+      "parent": 0.4290664419531823,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.05555555555555555,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "533.5",
+     "feats": {
+      "sim": 0.46428723633289337,
+      "path": 0.45263508409261705,
+      "parent": 0.4557186260819435,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02631578947368421,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "620.9",
+     "feats": {
+      "sim": 0.46539131402969364,
+      "path": 0.4498719446361066,
+      "parent": 0.4676577359437943,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.027777777777777776,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "535.3",
+     "feats": {
+      "sim": 0.4638759583234787,
+      "path": 0.4526548601686955,
+      "parent": 0.4562090083956718,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.025,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "531",
+     "feats": {
+      "sim": 0.48115875869989394,
+      "path": 0.4572310775518418,
+      "parent": 0.4886459991335869,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.06666666666666667,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "622",
+     "feats": {
+      "sim": 0.4840902775526047,
+      "path": 0.4501763353745143,
+      "parent": 0.44704319983720786,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.07692307692307693,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "524.7",
+     "feats": {
+      "sim": 0.4698783174157143,
+      "path": 0.43744943886995313,
+      "parent": 0.43046941459178933,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "534.4",
+     "feats": {
+      "sim": 0.4647028550505638,
+      "path": 0.4456570856273175,
+      "parent": 0.4273910135030747,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02702702702702703,
+      "beam": 0.0
+     }
+    }
+   ]
+  },
+  "warnings": []
+ },
+ {
+  "file": "C:\\UDC Library\\udc_poc\\books\\Analytical Mechanics - Fowles, Cassiday (6th).pdf",
+  "sha1": "3a06c660ce8d3ece6f8a7eae78976ad708594165",
+  "pages": 539,
+  "scanned": true,
+  "ocr": false,
+  "item_type": {
+   "value": "book",
+   "source": "rules",
+   "confidence": 0.33,
+   "scores": {
+    "patent": 0,
+    "thesis": 0,
+    "report": 0,
+    "journalArticle": 0,
+    "conferencePaper": 0,
+    "book": 2,
+    "standard": 0,
+    "score": 0
+   },
+   "subtype": null
+  },
+  "fields": {
+   "date": {
+    "value": "2023",
+    "source": "regex:año_más_frecuente",
+    "confidence": 0.25
+   },
+   "numPages": {
+    "value": 539,
+    "source": "pdf",
+    "confidence": 0.5
+   }
+  },
+  "unmapped": {},
+  "identifiers": {},
+  "missing_critical": [
+   "title",
+   "creators"
+  ],
+  "doc_language": null,
+  "classification": {
+   "suggestions": [
+    {
+     "rank": 1,
+     "udc": "004.63:004.33(02)",
+     "main": [
+      {
+       "code": "004.63",
+       "label": "Files",
+       "path": [
+        "0 SCIENCE AND KNOWLEDGE. ORGANIZATION. COMPUTER SCIENCE. INFORMATION. DOCUMENTATION. LIBRARIANSHIP. INSTITUTIONS. PUBLICATIONS",
+        "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics",
+        "004 Computer science and technology. Computing. Data processing",
+        "004.6 Data",
+        "004.63 Files"
+       ]
+      },
+      {
+       "code": "004.33",
+       "label": "Memory units. Storage units",
+       "path": [
+        "0 SCIENCE AND KNOWLEDGE. ORGANIZATION. COMPUTER SCIENCE. INFORMATION. DOCUMENTATION. LIBRARIANSHIP. INSTITUTIONS. PUBLICATIONS",
+        "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics",
+        "004 Computer science and technology. Computing. Data processing",
+        "004.3 Computer hardware",
+        "004.33 Memory units. Storage units"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.795,
+     "confidence": 0.17,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.478,
+      "sim_path_mean": 0.435,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": "004.33 Memory units. Storage units",
+      "retroceder_a": [
+       "004.6 Data",
+       "004 Computer science and technology. Computing. Data processing",
+       "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics"
+      ]
+     }
+    },
+    {
+     "rank": 2,
+     "udc": "004.33(02)",
+     "main": [
+      {
+       "code": "004.33",
+       "label": "Memory units. Storage units",
+       "path": [
+        "0 SCIENCE AND KNOWLEDGE. ORGANIZATION. COMPUTER SCIENCE. INFORMATION. DOCUMENTATION. LIBRARIANSHIP. INSTITUTIONS. PUBLICATIONS",
+        "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics",
+        "004 Computer science and technology. Computing. Data processing",
+        "004.3 Computer hardware",
+        "004.33 Memory units. Storage units"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.783,
+     "confidence": 0.15,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.466,
+      "sim_path_mean": 0.434,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "004.3 Computer hardware",
+       "004 Computer science and technology. Computing. Data processing",
+       "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics"
+      ]
+     }
+    },
+    {
+     "rank": 3,
+     "udc": "004.91(02)",
+     "main": [
+      {
+       "code": "004.91",
+       "label": "Document processing and production",
+       "path": [
+        "0 SCIENCE AND KNOWLEDGE. ORGANIZATION. COMPUTER SCIENCE. INFORMATION. DOCUMENTATION. LIBRARIANSHIP. INSTITUTIONS. PUBLICATIONS",
+        "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics",
+        "004 Computer science and technology. Computing. Data processing",
+        "004.9 Application-oriented computer-based techniques",
+        "004.91 Document processing and production"
+       ]
+      }
+     ],
+     "aux": {
+      "form": {
+       "code": "(02)",
+       "label": "Books in general",
+       "source": "rules",
+       "confidence": 0.6,
+       "evidence": "tipo de documento: book → 'books in general'"
+      }
+     },
+     "score": 0.782,
+     "confidence": 0.15,
+     "issues": [],
+     "explain": {
+      "sim_node": 0.466,
+      "sim_path_mean": 0.431,
+      "knn_vote": 0.0,
+      "en_haz": false,
+      "en_top_plano": true,
+      "segundo_tema": null,
+      "retroceder_a": [
+       "004.9 Application-oriented computer-based techniques",
+       "004 Computer science and technology. Computing. Data processing",
+       "00 Prolegomena. Fundamentals of knowledge and culture. Propaedeutics"
+      ]
+     }
+    }
+   ],
+   "low_confidence": true,
+   "mode": "default",
+   "neighbors_used": 0,
+   "note": "BAJA CONFIANZA: revisa manualmente.",
+   "_doc_embedding": "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",
+   "_candidates": [
+    {
+     "code": "004.63",
+     "feats": {
+      "sim": 0.4779909551143646,
+      "path": 0.43470861911773684,
+      "parent": 0.4319646656513214,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.5,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.33",
+     "feats": {
+      "sim": 0.46607452630996704,
+      "path": 0.43430969715118406,
+      "parent": 0.4418864846229553,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.2,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.91",
+     "feats": {
+      "sim": 0.4662354588508606,
+      "path": 0.43054449558258057,
+      "parent": 0.4228995442390442,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.25,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "091",
+     "feats": {
+      "sim": 0.476029634475708,
+      "path": 0.47005192438761395,
+      "parent": 0.47940754890441895,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.3333333333333333,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "004.22",
+     "feats": {
+      "sim": 0.44076859951019287,
+      "path": 0.42524667978286745,
+      "parent": 0.42187732458114624,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.041666666666666664,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.75",
+     "feats": {
+      "sim": 0.4408882260322571,
+      "path": 0.4247206449508667,
+      "parent": 0.41912752389907837,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.043478260869565216,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "09",
+     "feats": {
+      "sim": 0.47940754890441895,
+      "path": 0.4670630693435669,
+      "parent": 0.45471858978271484,
+      "depth": 2.0,
+      "knn": 0.0,
+      "flat": 1.0,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "930.25",
+     "feats": {
+      "sim": 0.4561663269996643,
+      "path": 0.42521319538354874,
+      "parent": 0.42146724462509155,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "086",
+     "feats": {
+      "sim": 0.4623633623123169,
+      "path": 0.45211265484491986,
+      "parent": 0.4392560124397278,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.16666666666666666,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "001.18",
+     "feats": {
+      "sim": 0.4365284740924835,
+      "path": 0.4235155642032623,
+      "parent": 0.41654807329177856,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.03125,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "004.78",
+     "feats": {
+      "sim": 0.4355755150318146,
+      "path": 0.4236581027507782,
+      "parent": 0.41912752389907837,
+      "depth": 5.0,
+      "knn": 0.0,
+      "flat": 0.02857142857142857,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "094",
+     "feats": {
+      "sim": 0.454914927482605,
+      "path": 0.4630136887232463,
+      "parent": 0.47940754890441895,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.1111111111111111,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "087",
+     "feats": {
+      "sim": 0.45481473207473755,
+      "path": 0.44959644476572674,
+      "parent": 0.4392560124397278,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.1,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "004.8",
+     "feats": {
+      "sim": 0.4449685215950012,
+      "path": 0.4271389991044998,
+      "parent": 0.4087774157524109,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.058823529411764705,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.5",
+     "feats": {
+      "sim": 0.45928776264190674,
+      "path": 0.39601877331733704,
+      "parent": 0.38119372725486755,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.14285714285714285,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "003.6",
+     "feats": {
+      "sim": 0.44055068492889404,
+      "path": 0.43186578899621964,
+      "parent": 0.43210241198539734,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.04,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "092",
+     "feats": {
+      "sim": 0.4455188512802124,
+      "path": 0.45988166332244873,
+      "parent": 0.47940754890441895,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.06666666666666667,
+      "beam": 1.0
+     }
+    },
+    {
+     "code": "004.3",
+     "feats": {
+      "sim": 0.4418864846229553,
+      "path": 0.42636848986148834,
+      "parent": 0.4087774157524109,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.047619047619047616,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "084",
+     "feats": {
+      "sim": 0.44781607389450073,
+      "path": 0.44726355870564777,
+      "parent": 0.4392560124397278,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.07692307692307693,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "096",
+     "feats": {
+      "sim": 0.4416489005088806,
+      "path": 0.4585916797320048,
+      "parent": 0.47940754890441895,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.045454545454545456,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "621.6",
+     "feats": {
+      "sim": 0.45308995246887207,
+      "path": 0.39446932077407837,
+      "parent": 0.38119372725486755,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.08333333333333333,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "003.2",
+     "feats": {
+      "sim": 0.43501564860343933,
+      "path": 0.43048202991485596,
+      "parent": 0.43210241198539734,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.02702702702702703,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "061.1",
+     "feats": {
+      "sim": 0.43583375215530396,
+      "path": 0.4280364140868187,
+      "parent": 0.417443186044693,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.029411764705882353,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "910.4",
+     "feats": {
+      "sim": 0.434494286775589,
+      "path": 0.42899415642023087,
+      "parent": 0.4277192950248718,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.025,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "095",
+     "feats": {
+      "sim": 0.4352869987487793,
+      "path": 0.456471045811971,
+      "parent": 0.47940754890441895,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.027777777777777776,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "015",
+     "feats": {
+      "sim": 0.4465060532093048,
+      "path": 0.4312466084957123,
+      "parent": 0.3925151824951172,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.07142857142857142,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "019",
+     "feats": {
+      "sim": 0.44348183274269104,
+      "path": 0.430238535006841,
+      "parent": 0.3925151824951172,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.05555555555555555,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "681.6",
+     "feats": {
+      "sim": 0.43711066246032715,
+      "path": 0.402744323015213,
+      "parent": 0.4021971821784973,
+      "depth": 4.0,
+      "knn": 0.0,
+      "flat": 0.03225806451612903,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "912",
+     "feats": {
+      "sim": 0.4419773817062378,
+      "path": 0.43191347519556683,
+      "parent": 0.41780492663383484,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.05,
+      "beam": 0.0
+     }
+    },
+    {
+     "code": "013",
+     "feats": {
+      "sim": 0.4421032667160034,
+      "path": 0.42977901299794513,
+      "parent": 0.3925151824951172,
+      "depth": 3.0,
+      "knn": 0.0,
+      "flat": 0.05263157894736842,
+      "beam": 0.0
+     }
+    }
+   ]
+  },
+  "warnings": [
+   "PDF sin texto seleccionable (escaneado). Usa --ocr para extraer."
+  ]
+ }
+]
