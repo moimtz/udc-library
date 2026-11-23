@@ -149,6 +149,10 @@ def _show(r):
             print(f"      {m['code']}  {' > '.join(m['path'][-3:])}")
         for k, v in s["aux"].items():
             print(f"      {k}: {v['code']} {v['label']}  [{v['source']}, {v['evidence']}]")
+        if s.get("explain", {}).get("via_see_also"):
+            print(f"      (llegó por el See also de {s['explain']['via_see_also']})")
+        for x in s.get("ver_tambien", [])[:3]:
+            print(f"      ⇨ see also: {x['code']}  {x['label']}" + (f"  (sim {x['sim']:.2f})" if x["sim"] is not None else ""))
 
 
 def cmd_review(a):

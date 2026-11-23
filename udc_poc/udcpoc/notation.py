@@ -83,6 +83,17 @@ def validate(notation: str, tree=None) -> list[tuple[str, str]]:
             if t.kind == "rel":
                 continue
             node = tree.get(t.text)
+            canc = tree.cancellation(t.text) if hasattr(tree, "cancellation") else None
+            if canc is not None:
+                # notación cancelada: mismo nivel que si no existiera, pero se dice por qué y con qué se reemplaza
+                if t.kind == "main":
+                    last_main = t.text
+                level = "error" if t.kind == "main" else "warning"
+                repl = "; ".join(canc["replaced_by"]) or "sin reemplazo"
+                when = f"{canc['year']}" + (f", {canc['ec']}" if canc["ec"] else "")
+                issues.append((level, f"{t.text} fue cancelada en la UDC [{when}] ({canc['label']}); "
+                                      f"se reemplaza por: {repl}"))
+                continue
             if t.kind == "main":
                 last_main = t.text
                 if node is None or node.kind != "main":

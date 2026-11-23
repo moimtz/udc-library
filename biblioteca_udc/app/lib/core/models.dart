@@ -159,8 +159,9 @@ class UdcNode {
   final int direct;
   final String? type; // null = normal class, 'heading' (group without notation), 'info' (informative)
   final bool hasInfo; // has notes for the information window
+  final Map<String, String> including; // "Including ..." shown after the label, per language
   UdcNode(this.code, this.parent, this.labels, this.ord, this.count, this.direct,
-      {this.type, this.hasInfo = false});
+      {this.type, this.hasInfo = false, this.including = const {}});
 
   factory UdcNode.fromJson(Map<String, dynamic> j) => UdcNode(
         _s(j['code']),
@@ -171,6 +172,7 @@ class UdcNode {
         (j['direct'] as num?)?.toInt() ?? 0,
         type: j['type'] as String?,
         hasInfo: j['has_info'] == true,
+        including: _labels(j['incl']),
       );
 
   bool get isInfo => type == 'info';
@@ -181,6 +183,8 @@ class UdcNode {
 
   String label(String lang) =>
       labels[lang] ?? labels['en'] ?? (labels.isEmpty ? '' : labels.values.first);
+
+  String includingIn(String lang) => _pickLang(including, lang);
 }
 
 String _pickLang(Map<String, String> labels, String lang) =>
@@ -217,12 +221,15 @@ class UdcNodeInfo {
   final List<UdcRef> path; // ancestors, root first
   final Map<String, List<String>> scope;
   final Map<String, List<String>> app;
+  final Map<String, List<String>> info; // information note
   final Map<String, List<String>> including;
   final Map<String, List<UdcExample>> examples;
   final List<UdcRef> related;
+  final List<UdcCancelledRef> replaces; // cancelled classes now classed here
+  final List<UdcCancellation> earlier; // earlier meanings of this same notation (cancelled, then reused)
 
-  UdcNodeInfo(this.code, this.labels, this.type, this.path, this.scope, this.app, this.including,
-      this.examples, this.related);
+  UdcNodeInfo(this.code, this.labels, this.type, this.path, this.scope, this.app, this.info, this.including,
+      this.examples, this.related, this.replaces, this.earlier);
 
   factory UdcNodeInfo.fromJson(Map<String, dynamic> j) => UdcNodeInfo(
         _s(j['code']),
@@ -231,6 +238,7 @@ class UdcNodeInfo {
         [for (final p in (j['path'] as List? ?? const [])) UdcRef.fromJson(Map<String, dynamic>.from(p as Map))],
         _texts(j['scope']),
         _texts(j['app']),
+        _texts(j['info']),
         _texts(j['including']),
         {
           for (final e in ((j['examples'] ?? const {}) as Map).entries)
@@ -240,6 +248,14 @@ class UdcNodeInfo {
             ]
         },
         [for (final r in (j['related'] as List? ?? const [])) UdcRef.fromJson(Map<String, dynamic>.from(r as Map))],
+        [
+          for (final r in (j['replaces'] as List? ?? const []))
+            UdcCancelledRef.fromJson(Map<String, dynamic>.from(r as Map))
+        ],
+        [
+          for (final r in (j['earlier'] as List? ?? const []))
+            UdcCancellation.fromJson(Map<String, dynamic>.from(r as Map))
+        ],
       );
 
   String label(String lang) => _pickLang(labels, lang);
@@ -249,7 +265,91 @@ class UdcNodeInfo {
       m[lang] ?? m['en'] ?? (m.isEmpty ? <T>[] : m.values.first);
 
   bool get isEmpty =>
-      scope.isEmpty && app.isEmpty && including.isEmpty && examples.isEmpty && related.isEmpty;
+      scope.isEmpty && app.isEmpty && info.isEmpty && including.isEmpty && examples.isEmpty && related.isEmpty &&
+      replaces.isEmpty && earlier.isEmpty;
+
+  bool get hasNotes =>
+      scope.isNotEmpty || app.isNotEmpty || info.isNotEmpty || including.isNotEmpty || examples.isNotEmpty ||
+      related.isNotEmpty;
+}
+
+/// "[2011, E&C33]" (the E&C issue is missing in a few records).
+String cancelledWhen(int? year, String? ec) =>
+    '[${year ?? '?'}${(ec ?? '').isEmpty ? '' : ', $ec'}]';
+
+/// A cancelled class that points to the current one (GET /api/udc/node -> replaces).
+class UdcCancelledRef {
+  final String code;
+  final int? year;
+  final String ec;
+  final String label;
+  UdcCancelledRef(this.code, this.year, this.ec, this.label);
+  factory UdcCancelledRef.fromJson(Map<String, dynamic> j) =>
+      UdcCancelledRef(_s(j['code']), (j['year'] as num?)?.toInt(), _s(j['ec']), _s(j['label']));
+}
+
+class UdcReplacement {
+  final String code;
+  final Map<String, String> labels;
+  final bool exists; // false = not a class of the current tree (e.g. a combination such as 94(4/9))
+  UdcReplacement(this.code, this.labels, this.exists);
+  String label(String lang) => _pickLang(labels, lang);
+}
+
+/// One cancellation of a notation: when, old label and the classes that replace it.
+class UdcCancellation {
+  final String code;
+  final int? year;
+  final String ec;
+  final String label;
+  final String including;
+  final String note; // e.g. 'No replacement'
+  final List<UdcReplacement> replacedBy;
+  UdcCancellation(this.code, this.year, this.ec, this.label, this.including, this.note, this.replacedBy);
+
+  factory UdcCancellation.fromJson(Map<String, dynamic> j) => UdcCancellation(
+        _s(j['code']),
+        (j['year'] as num?)?.toInt(),
+        _s(j['ec']),
+        _s(j['label']),
+        _s(j['including']),
+        _s(j['note']),
+        [
+          for (final r in (j['replaced_by'] as List? ?? const []))
+            UdcReplacement(_s((r as Map)['code']), _labels(r['labels']), r['exists'] == true)
+        ],
+      );
+
+  String get when => cancelledWhen(year, ec);
+}
+
+/// Compact entry of GET /api/udc/cancelled-index (cancelled notations not in the current tree).
+class CancelledEntry {
+  final String code;
+  final int? year;
+  final String label;
+  final List<String> replacedBy;
+  CancelledEntry(this.code, this.year, this.label, this.replacedBy);
+  factory CancelledEntry.fromJson(List j) => CancelledEntry(_s(j[0]), (j[1] as num?)?.toInt(), _s(j[2]),
+      [for (final t in (j[3] as List? ?? const [])) _s(t)]);
+}
+
+/// A cancelled notation found inside a UDC string (GET /api/udc/check).
+class UdcCancelledHit {
+  final int start;
+  final int end;
+  final String component;
+  final List<UdcCancellation> cancellations;
+  UdcCancelledHit(this.start, this.end, this.component, this.cancellations);
+  factory UdcCancelledHit.fromJson(Map<String, dynamic> j) => UdcCancelledHit(
+        (j['start'] as num).toInt(),
+        (j['end'] as num).toInt(),
+        _s(j['component']),
+        [
+          for (final c in (j['cancelled'] as List? ?? const []))
+            UdcCancellation.fromJson(Map<String, dynamic>.from(c as Map))
+        ],
+      );
 }
 
 class TreeRow {
@@ -308,7 +408,9 @@ class UdcIndex {
   Set<String> _matching(String f, String lang) {
     final vis = <String>{};
     for (final n in byCode.values) {
-      if (foldText(n.displayCode).startsWith(f) || foldText(n.label(lang)).contains(f)) {
+      if (foldText(n.displayCode).startsWith(f) ||
+          foldText(n.label(lang)).contains(f) ||
+          foldText(n.includingIn(lang)).contains(f)) {
         String? c = n.code;
         while (c != null && vis.add(c)) {
           c = byCode[c]?.parent;

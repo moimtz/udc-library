@@ -12,9 +12,10 @@ from pathlib import Path
 
 SKOS = "http://www.w3.org/2004/02/skos/core#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
-UDC = "http://udcdata.info/udc-schema#"   # udc:applicationNote, udc:includingNote
-UDCX = "urn:udc:ext#"                     # udcx:nodeType, udcx:order (udc_merge.py)
+UDC = "http://udcdata.info/udc-schema#"   # udc:applicationNote, udc:informationNote, udc:includingNote
+UDCX = "urn:udc:ext#"                     # udcx:nodeType, udcx:order, udcx:auxType (udc_merge.py)
 
 KINDS = ("main", "lang", "form", "place", "ethnic", "time", "common", "special", "viewpoint", "other")
 
@@ -49,6 +50,8 @@ class Node:
     examples: list = field(default_factory=list)  # [(notación, texto)] de skos:example
     origin: str = ""                              # "" = clase del RDF; "example" = creado a partir de un ejemplo
     host: str | None = None                       # (origin=example) uri del nodo que trae el ejemplo
+    aux_type: str | None = None                   # udcx:auxType de UDC Online: "common", "special" o None
+    related: list = field(default_factory=list)   # uris de skos:related ("See also"), en ambos sentidos
     parent: str | None = None
     children: list = field(default_factory=list)
     kind: str = "main"
@@ -131,6 +134,8 @@ def iter_triples(path):
 class Tree:
     def __init__(self, nodes: dict[str, Node], label_langs=("en", "sv", "fi")):
         self.nodes = nodes
+        self.official_aux = False  # True si el RDF trae udcx:auxType
+        self.cancelled: dict[str, list[dict]] = {}   # notación cancelada -> [{year, ec, label, replaced_by}]
         self.label_langs = tuple(label_langs)
         self.by_notation: dict[str, Node] = {}
         for n in nodes.values():
@@ -143,10 +148,29 @@ class Tree:
         if not path.exists():
             raise FileNotFoundError(f"No encuentro el RDF del UDC en {path}. Cópialo ahí (ver README).")
         notation, labels, alts, notes, including, examples = {}, {}, {}, {}, {}, {}
-        broader, narrower = {}, {}
+        broader, narrower, related = {}, {}, {}
         info = set()  # nodos informativos (udcx:nodeType "info"): no son clases asignables
+        aux = {}      # udcx:auxType (marca oficial de auxiliar común/especial)
+        canc = {}     # udcx:CancelledClass: uri -> {notation, year, ec, label, replaced_by}
+        rdfs_label = {}
         for s, p, o, lang in iter_triples(path):
-            if p == UDCX + "nodeType":
+            if p.startswith(UDCX) and p[len(UDCX):] in ("cancelledNotation", "cancelledYear", "cancelledIn",
+                                                         "replacedByNotation"):
+                c = canc.setdefault(s, {"notation": "", "year": None, "ec": "", "label": "", "replaced_by": []})
+                k = p[len(UDCX):]
+                if k == "cancelledNotation":
+                    c["notation"] = o.strip()
+                elif k == "cancelledYear":
+                    c["year"] = int(o) if o.strip().isdigit() else None
+                elif k == "cancelledIn":
+                    c["ec"] = o.strip()
+                else:
+                    c["replaced_by"].append(o.strip())
+            elif p == RDFS + "label":
+                rdfs_label[s] = o.strip()
+            elif p == UDCX + "auxType":
+                aux[s] = o.strip() or None
+            elif p == UDCX + "nodeType":
                 if o.strip() == "info":
                     info.add(s)
             elif p == SKOS + "notation":
@@ -156,7 +180,8 @@ class Tree:
             elif p == SKOS + "altLabel":
                 if lang in ("en", "", None):  # en el Summary solo hay altLabel en finés: no aportan
                     alts.setdefault(s, []).append(o.strip())
-            elif p in (SKOS + "scopeNote", SKOS + "definition", SKOS + "note", UDC + "applicationNote"):
+            elif p in (SKOS + "scopeNote", SKOS + "definition", SKOS + "note", UDC + "applicationNote",
+                       UDC + "informationNote"):
                 if lang in ("en", "", None):
                     notes[s] = (notes.get(s, "") + " " + o.strip()).strip()
             elif p == UDC + "includingNote":
@@ -166,6 +191,8 @@ class Tree:
                 ex = parse_example(o) if lang in ("en", "", None) else None
                 if ex and ex not in examples.get(s, []):
                     examples.setdefault(s, []).append(ex)
+            elif p == SKOS + "related":
+                related.setdefault(s, []).append(o)
             elif p == SKOS + "broader":
                 broader.setdefault(s, []).append(o)
             elif p == SKOS + "narrower":
@@ -181,8 +208,21 @@ class Tree:
                 continue
             nodes[uri] = Node(uri=uri, notation=nt, labels=labels.get(uri, {}), alt=alts.get(uri, []),
                               note=notes.get(uri, ""), including=including.get(uri, ""),
-                              examples=examples.get(uri, []))
+                              examples=examples.get(uri, []), aux_type=aux.get(uri))
+        # "See also": UDC Online a veces lo pone en un solo sentido; aquí vale en los dos
+        for s, lst in related.items():
+            for o in lst:
+                if s in nodes and o in nodes and s != o:
+                    for a, b in ((s, o), (o, s)):
+                        if b not in nodes[a].related:
+                            nodes[a].related.append(b)
         t = cls(nodes, label_langs)
+        t.official_aux = bool(aux)
+        # clases canceladas: fuera del árbol (no son nodos); notación -> [cancelaciones]
+        for uri, c in canc.items():
+            if c["notation"]:
+                c["label"] = rdfs_label.get(uri, "")
+                t.cancelled.setdefault(c.pop("notation"), []).append(c)
         t._link(broader, narrower, struct)
         t._assign_kinds()
         t._add_example_nodes()
@@ -300,6 +340,16 @@ class Tree:
         for n in order:
             if n.kind == "main" and n.parent and self.nodes[n.parent].kind not in ("main", "other"):
                 n.kind = self.nodes[n.parent].kind
+        # Si el RDF trae la marca oficial de UDC Online (udcx:auxType), decide entre principal y especial.
+        # Corrige ~1 100 auxiliares especiales que la notación no delata (661.187.047, 661.8`044.3) y ~170
+        # clases principales tomadas por especiales (621.039.5...). Dentro de las tablas auxiliares comunes
+        # se conserva el tipo fino (place, lang, time...), que es el que elige la tabla.
+        if getattr(self, "official_aux", False):
+            for n in order:
+                if n.kind == "main" and n.aux_type == "special":
+                    n.kind = "special"
+                elif n.kind == "special" and n.aux_type is None:
+                    n.kind = "main"
 
     # ---- consultas
     def get(self, notation: str) -> Node | None:
@@ -343,6 +393,16 @@ class Tree:
         if base and n.notation.startswith(base.notation):
             return n.notation[len(base.notation):]
         return n.notation
+
+    def cancellation(self, notation: str) -> dict | None:
+        """La cancelación más reciente de una notación que ya NO existe en el árbol (las reutilizadas no cuentan)."""
+        if notation in self.by_notation or notation not in self.cancelled:
+            return None
+        return max(self.cancelled[notation], key=lambda c: c["year"] or 0)
+
+    def see_also(self, n: Node) -> list[Node]:
+        """Clases enlazadas por "See also" (skos:related), en ambos sentidos."""
+        return [self.nodes[u] for u in n.related if u in self.nodes]
 
     def is_related(self, a: Node, b: Node) -> bool:
         """True si a y b son iguales, o uno es ancestro del otro."""
@@ -396,4 +456,7 @@ class Tree:
                 "con_ejemplos": sum(1 for n in self.nodes.values() if n.examples),
                 "nodos_de_ejemplo": sum(1 for n in self.nodes.values() if n.origin == "example"),
                 "con_including": sum(1 for n in self.nodes.values() if n.including),
+                "marca_auxiliar_oficial": self.official_aux,
+                "con_see_also": sum(1 for n in self.nodes.values() if n.related),
+                "notaciones_canceladas": len(self.cancelled),
                 "sin_etiqueta_en": sum(1 for n in self.nodes.values() if "en" not in n.labels)}

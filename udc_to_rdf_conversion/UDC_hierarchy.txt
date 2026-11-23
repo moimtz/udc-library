@@ -39902,6 +39902,10 @@
                                                                 598.138.2 Grippidae (extinct)
                                                                 598.138.3 Mixosauridae (extinct). Shastasauridae (extinct). Leptonectidae (extinct)
                                                                 598.138.4 Ophthalmosauridae (extinct). Stenopterygiidae (extinct). Toretocnemidae (extinct)
+                                                            598.141/.143 Sauropterygia (extinct)
+                                                                598.141 Placodontia (placodonts) (extinct)
+                                                                598.142 Nothosauroidea (nothosaurs) (extinct)
+                                                                598.143 Plesiosauria (plesiosaurs) (extinct)
                                                     598.141/.16 Lepidosauromorpha
                                                         598.15/.16 Lepidosauria
                                                             598.15 Sphenodontia
@@ -40522,6 +40526,7 @@
                                                     599.62 Hyracoidea. Procaviidae
                                                     599.63/.67 Meridiungulata (extinct)
                                                         599.63/.64 Notoungulata (extinct)
+                                                            599.63 Typotheria (extinct)
                                                             599.64 Toxodonta (extinct)
                                                         599.65 Litopterna (extinct)
                                                         599.66 Amblypoda (extinct)
@@ -58494,6 +58499,17 @@
                                 66.047.16 Multiple intermediate heating of air. Air return. Air circulation
                             66.047.3 Individual types of drying, and corresponding drying equipment
                                 66.047.4/.6 Drying by heat supply process. Drying apparatus according to design
+                                    66.047.4/.5 Drying by direct contact of material being dried with the drying agent
+                                        66.047.41 Convection drying in general
+                                        66.047.44 Drying in the open air
+                                        66.047.45 Drying in drying cupboards or cabinets
+                                        66.047.46 Drying in drying stoves, ovens
+                                        66.047.47 Drying in drying channels. Tunnel driers
+                                        66.047.49 Drying on drying racks and shelves
+                                        66.047.54 Drying in shaft and tubular driers
+                                        66.047.55 Drying with belt conveyors. Band driers
+                                        66.047.56 Tray driers. Cascade driers
+                                        66.047.57 Rotary driers. Drum driers in general
                                     66.047.6 Contact drying in general. Drying by heat transfer through a solid partition
                                         66.047.62 Roller driers
                                         66.047.63 Rake driers. Driers with agitators
@@ -71406,6 +71422,39 @@
                     902.66 Geochronological dating techniques
                     902.67 Palaeontological dating techniques (palaeobotanic and palaeozoological)
             903 Prehistory. Prehistoric remains, artefacts, antiquities
+                903.01/.08 Special auxiliary subdivision for prehistoric remains
+                    903.01 Stone and bone objects according to shaping method
+                    903.02 Pottery according to method of manufacture
+                    903.03 Glass according to method of manufacture
+                    903.04 Textiles according to method of manufacture
+                    903.05 Metal artefacts according to method of manufacture
+                    903.07 Artefacts according to quality of execution
+                    903.08 Ornamentation. Decoration
+                903`1 Special auxiliary subdivision for prehistoric culture forms
+                    903`12 Prehistoric hunting and fishing cultures
+                    903`13 Prehistoric early farming / agrarian cultures
+                    903`14 Prehistoric pastoral cultures
+                    903`15 Prehistoric nomadic cultures
+                        903`152 Cultures of early nomadic hunter-gatherers and foragers
+                        903`153 Cultures of early pastoral nomads
+                    903`16 Prehistoric advanced farming cultures
+                    903`18 Prehistoric town, city cultures (civilizations)
+                903.2 Artefacts
+                    903.21 Tools. Implements
+                    903.22 Weapons
+                    903.23 Vessels. Jars. Urns. Bowls
+                    903.24 Clothing
+                    903.25 Personal ornaments
+                    903.26 Objects of worship. Religious, cult objects
+                    903.27 Artistic remains
+                    903.28 Food remains. Kitchen middens
+                903.3 Prehistoric dwellings
+                    903.36 Typology. Comparative study of form. Associations
+                903.4 Prehistoric settlements
+                903.5 Burial remains
+                903.6 Prehistoric stone monuments
+                903.7 Places of worship
+                903.8 Intentional deposits (other than in graves)
             904 Cultural remains of historical times
             908 Area studies. Study of a locality
         91 Geography. Exploration of the Earth and of individual countries. Travel. Regional geography

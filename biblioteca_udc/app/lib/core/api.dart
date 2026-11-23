@@ -141,6 +141,29 @@ class ApiClient {
   Future<UdcNodeInfo> udcNode(String code) async => UdcNodeInfo.fromJson(Map<String, dynamic>.from(
       await _json('GET', '/api/udc/node', query: {'code': code})));
 
+  /// Cancellations of a notation (404 if it was never cancelled).
+  Future<List<UdcCancellation>> udcCancelled(String code) async {
+    final j = Map<String, dynamic>.from(await _json('GET', '/api/udc/cancelled', query: {'code': code}));
+    return [
+      for (final c in (j['cancellations'] as List)) UdcCancellation.fromJson(Map<String, dynamic>.from(c as Map))
+    ];
+  }
+
+  /// Cancelled notations that are not in the current tree (for the tree filter).
+  Future<List<CancelledEntry>> udcCancelledIndex() async {
+    final j = Map<String, dynamic>.from(await _json('GET', '/api/udc/cancelled-index'));
+    return [for (final e in (j['cancelled'] as List)) CancelledEntry.fromJson(e as List)];
+  }
+
+  /// Cancelled notations used as components of a UDC string (checked before saving an item).
+  Future<List<UdcCancelledHit>> udcCheck(String udc) async {
+    final j = Map<String, dynamic>.from(
+        await _json('GET', '/api/udc/check', query: {'udc': udc}, timeout: const Duration(seconds: 10)));
+    return [
+      for (final h in (j['cancelled'] as List)) UdcCancelledHit.fromJson(Map<String, dynamic>.from(h as Map))
+    ];
+  }
+
   Future<ItemsPage> items(Map<String, String> q) async {
     final j = Map<String, dynamic>.from(await _json('GET', '/api/items', query: q));
     return ItemsPage(

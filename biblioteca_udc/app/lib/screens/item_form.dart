@@ -82,6 +82,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   bool get _isEdit => widget.item != null;
   String _phase = 'ready'; // uploading | ready | error
   bool _busy = false;
+  String? _checkedUdc; // UDC string already checked for cancelled notations (not asked again)
   String? _tempId;
   int _pages = 1;
   int _coverPage = 1;
@@ -269,6 +270,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       _banner('Year must be a number, for example 1998.', _Kind.error, seconds: 5);
       return;
     }
+    if (!await _checkCancelledUdc()) return;
     setState(() => _busy = true);
     try {
       if (_isEdit) {
@@ -309,6 +311,36 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Warns, without blocking, when the UDC uses cancelled notations and offers their replacements.
+  /// Returns false when the user goes back to editing. Offline (or an older server) never blocks saving.
+  Future<bool> _checkCancelledUdc() async {
+    final s = context.read<AppState>();
+    for (var round = 0; round < 10; round++) {
+      final udc = _udc.text.trim();
+      if (udc.isEmpty || udc == _checkedUdc) return true;
+      List<UdcCancelledHit> hits;
+      try {
+        hits = await s.api.udcCheck(udc);
+      } catch (_) {
+        return true;
+      }
+      if (!mounted) return false;
+      if (hits.isEmpty) {
+        _checkedUdc = udc;
+        return true;
+      }
+      final res = await showDialog<String>(
+          context: context, builder: (_) => _CancelledUdcDialog(udc: udc, hits: hits, lang: s.udcLang));
+      if (res == null || !mounted) return false; // back to editing
+      if (res == udc) {
+        _checkedUdc = udc; // save as it is
+        return true;
+      }
+      setState(() => _udc.text = res); // one component replaced: check the new string
+    }
+    return true;
   }
 
   void _resolveDuplicate(String action) {
@@ -609,6 +641,66 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// "568 was cancelled in 2011 (E&C33)..." with one button per replacing class. Returns the UDC string with that
+/// component replaced, the same string ("Save as it is") or null ("Back to editing").
+class _CancelledUdcDialog extends StatelessWidget {
+  final String udc;
+  final List<UdcCancelledHit> hits;
+  final String lang;
+  const _CancelledUdcDialog({required this.udc, required this.hits, required this.lang});
+
+  String _replace(UdcCancelledHit h, String code) => udc.substring(0, h.start) + code + udc.substring(h.end);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      icon: Icon(Icons.history, color: cs.tertiary),
+      title: const Text('Cancelled UDC notation'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('This UDC number uses ${hits.length == 1 ? 'a notation that was' : 'notations that were'} '
+                'cancelled in the UDC. You can replace ${hits.length == 1 ? 'it' : 'them'} or save it as it is.'),
+            const SizedBox(height: 12),
+            for (final h in hits)
+              for (final c in h.cancellations)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text.rich(TextSpan(children: [
+                      TextSpan(
+                          text: h.component,
+                          style: TextStyle(fontWeight: FontWeight.w700, decoration: TextDecoration.lineThrough)),
+                      TextSpan(text: '  cancelled ${c.when}  ', style: TextStyle(color: cs.onSurfaceVariant)),
+                      TextSpan(text: c.label),
+                    ])),
+                    const SizedBox(height: 6),
+                    if (c.replacedBy.isEmpty)
+                      Text(c.note.isEmpty ? 'No replacement.' : c.note, style: TextStyle(color: cs.onSurfaceVariant))
+                    else
+                      Wrap(spacing: 8, runSpacing: 8, children: [
+                        for (final r in c.replacedBy)
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context, _replace(h, r.code)),
+                            child: Text(r.exists ? 'Use ${r.code}  ${r.label(lang)}' : 'Use ${r.code}',
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                      ]),
+                  ]),
+                ),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back to editing')),
+        FilledButton.tonal(onPressed: () => Navigator.pop(context, udc), child: const Text('Save as it is')),
+      ],
     );
   }
 }

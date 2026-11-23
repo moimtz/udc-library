@@ -59,6 +59,15 @@ CREATE TABLE IF NOT EXISTS udc_nodes(
   node_type TEXT,   -- NULL = normal class; 'heading' (group without notation) or 'info' (informative, not assignable)
   notes TEXT        -- JSON for the class information window (scope, app, including, examples, related) or NULL
 );
+-- Cancelled UDC classes (udcx:CancelledClass in udcs-skos.rdf). Not part of the tree; a notation may have been
+-- cancelled and later reused, so it can also exist in udc_nodes.
+CREATE TABLE IF NOT EXISTS udc_cancelled(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL, year INTEGER, ec TEXT, label TEXT, including TEXT,
+  replaced_by TEXT NOT NULL DEFAULT '[]',   -- JSON list of notations, in UDC Online order
+  note TEXT                                 -- e.g. 'No replacement'
+);
+CREATE INDEX IF NOT EXISTS idx_udc_cancelled_code ON udc_cancelled(code);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 

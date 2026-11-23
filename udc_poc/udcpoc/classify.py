@@ -36,6 +36,30 @@ class Classifier:
         # nodos no indexados (p. ej. sin etiqueta) puntúan -1 en vez de romper el beam search
         return lambda n: float(sim[pos[n.uri]]) if n.uri in pos else -1.0
 
+    def _see_also_candidates(self, uris, sim_of) -> dict:
+        """{uri nueva: nodo que la enlaza}. Solo destinos de la tabla principal (su puntuación usa la cadena de clases
+        principales); los auxiliares enlazados se muestran en "ver_tambien" pero no compiten."""
+        t = self.tree
+        if config.SEE_ALSO_FROM <= 0:
+            return {}
+        top = sorted((t.nodes[u] for u in uris), key=lambda n: -sim_of(n))[:config.SEE_ALSO_FROM]
+        via = {}
+        for n in top:
+            src = t.nodes[n.host] if n.origin == "example" else n
+            for r in t.see_also(src):
+                if r.kind == "main" and not r.is_range and r.uri not in via and r.uri in self.index.pos:
+                    via[r.uri] = src
+        return via
+
+    def _see_also_list(self, n, sim_of) -> list:
+        """Clases "See also" de la sugerencia (o de su anfitrión, si es un ejemplo), ordenadas por similitud."""
+        t = self.tree
+        src = t.nodes[n.host] if n.origin == "example" else n
+        rel = [(r, sim_of(r)) for r in t.see_also(src)]
+        rel.sort(key=lambda x: -x[1])
+        return [{"code": r.notation, "label": self._lbl(r), "sim": round(s, 3) if s > -1 else None}
+                for r, s in rel[:config.SEE_ALSO_MAX]]
+
     def _beam(self, sim_of):
         t = self.tree
         roots = t.roots("main")
@@ -119,6 +143,9 @@ class Classifier:
         uris = set(flat_rank) | set(beam)
         # si entra un nodo de ejemplo, su anfitrión también compite (para poder retroceder a él)
         uris |= {t.nodes[u].host for u in list(uris) if t.nodes[u].origin == "example"}
+        # "See also": las mejores candidatas aportan sus clases enlazadas de otras ramas (un solo salto)
+        via = self._see_also_candidates(uris, sim_of)
+        uris |= set(via)
 
         neighbors = self.feedback.neighbors(qdoc, exclude_sha=sha) if self.feedback else []
         vote = self._knn_votes(neighbors)
@@ -131,7 +158,8 @@ class Classifier:
             feats = {"sim": s[-1], "path": float(np.mean(s)), "parent": s[-2] if len(s) > 1 else s[-1],
                      "depth": float(len(chain)), "knn": vote(n),
                      "flat": 1.0 / (1 + flat_rank[u]) if u in flat_rank else 0.0,
-                     "beam": 1.0 if u in beam else 0.0}
+                     "beam": 1.0 if u in beam else 0.0,
+                     "see_also": 1.0 if u in via else 0.0}
             rows.append((n, {k: float(v) for k, v in feats.items()}))
 
         mode = "default"
@@ -206,12 +234,14 @@ class Classifier:
                           "origin": t.get(m["code"]).origin or "class",
                           "path": [f"{x.notation} {self._lbl(x)}" for x in t.path(t.get(m["code"]))]} for m in mains],
                 "aux": {**glob, **per},
+                "ver_tambien": self._see_also_list(n, sim_of),
                 "score": round(sc, 3), "confidence": round(conf, 2),
                 "issues": [{"level": lv, "msg": m} for lv, m in issues],
                 "explain": {"sim_node": round(f["sim"], 3), "sim_path_mean": round(f["path"], 3),
                             "knn_vote": round(f["knn"], 2), "en_haz": bool(f["beam"]), "en_top_plano": bool(f["flat"]),
                             "origen": (f"ejemplo de combinación de {t.nodes[n.host].notation} "
                                        f"{self._lbl(t.nodes[n.host])}" if n.origin == "example" else "clase del árbol"),
+                            "via_see_also": (f"{via[n.uri].notation} {self._lbl(via[n.uri])}" if n.uri in via else None),
                             "segundo_tema": (f"{second[0].notation} {self._lbl(second[0])}" if second else None),
                             "retroceder_a": [f"{x.notation} {self._lbl(x)}" for x in t.ancestors(n) if x.kind == "main" and not x.is_range][::-1][:3]},
             })

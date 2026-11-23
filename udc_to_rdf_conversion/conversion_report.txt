@@ -1,482 +1,997 @@
-UDC merge report - 2026-11-20 17:16
-RDF de entrada: udcs-skos.(1)rdf
+UDC merge report - 2026-11-23 12:02
+RDF de entrada: udcs-skos.rdf
 TXT: UDC_hierarchy.txt
-Idioma: en  Modo: structure  Prune: True
+Idioma: en  Modo: structure  Prune: False
 Salida: udcs-skos.rdf
 
-Conceptos escritos: 71811
-Etiquetas por idioma: en=71811
+Conceptos escritos: 71860
+Etiquetas por idioma: en=71860
 Nodos sin etiqueta en 'en': 0
-Creados: 69386
-Modificados (padre, orden o etiqueta): 2425
-Cambios de padre: 202
-Cambios de etiqueta: 227
-Eliminados (no están en el .txt): 27
-Literales descartados por idioma: 12116
+Creados: 0
+Modificados (padre, orden o etiqueta): 0
+Cambios de padre: 0
+Cambios de etiqueta: 0
+Conservados aunque no están en el .txt: 0
+Literales descartados por idioma: 0
 Predicados ignorados: {}
 related colgantes eliminados: 0
 Huérfanos (padre inexistente, pasan a raíz): 0
-extra_notes con notación desconocida: []
+Notas aplicadas por archivo: {'udc_records': 45439, 'extra_notes': 1}
+Notas con notación desconocida: 0
 extra_notes vacías: []
+Nodos con scopeNote: 1633 (1633 textos)
+Nodos con applicationNote: 1952 (1954 textos)
+Nodos con informationNote: 908 (908 textos)
+Nodos con includingNote: 11495 (11495 textos)
+Nodos con example: 2826 (7338 textos)
+Nodos con related: 8400
+Clases canceladas escritas: 12309 (de udc_cancelled.json); reemplazos que no son clases del árbol: 966
+Tipo de auxiliar (auxType): principal=39423, common=15458, special=16979
 
-== Eliminados (27)
-54-1/-4
-81`01
-81`01/`08
-81`02
-81`04
-81`06
-81`08
-82.02/.09
-561.4
-561.7
-561.9
-565.7
-567/569
-568
-568.2
-569
-582.32/.998
-582.37/.39
-582.42/.47
-582.261/.279
-582.361/.99
-(467.2)
-(470+571)
-(721/727)
-(=1/=8)
-(=1:1/9)
-=43
-
-== Cambios de padre (202)
-+: 'heading-2' -> '+, /'
-/: 'heading-2' -> '+, /'
-:: 'heading-2' -> ':, ::, []'
-::: 'heading-2' -> ':, ::, []'
-[]: 'heading-2' -> ':, ::, []'
-=111: '=11' -> '=111/=112'
-=112: '=11' -> '=111/=112'
-=131: '=13' -> '=130/=134'
-=132: '=13' -> '=132/=133'
-=133: '=13' -> '=132/=133'
-=134: '=13' -> '=132/=134'
-=162.1: '=162' -> '=162.1/.2'
-=214.21: '=214.2' -> '=214.21/.22'
-=214.22: '=214.2' -> '=214.21/.22'
-=221.31: '=221' -> '=221.3'
-=411.16: '=411.1' -> '=411.15/.16'
-=411.3: '=411' -> '=411.3/.4'
-=411.4: '=411' -> '=411.3/.4'
-=414.231: '=414' -> '=414.23'
-=431: '=43' -> '=4'
-=432: '=43' -> '=4'
-=621.251: '=621' -> '=621.25'
-=81: '=8' -> '=81/=82'
-=82: '=8' -> '=81/=82'
-=821.24: '=82' -> '=821.2'
-=822.21: '=82' -> '=822.2'
-=823.7: '=82' -> '=823'
-=852.11: '=852' -> '=852.1'
-=855.21: '=855' -> '=855.2'
-(1-0/-9): '(1/9)' -> '(1)'
-(1-2): '(1-0/-9)' -> '(1-2/-4)'
-(437.3): '(4)' -> '(437)'
-(437.6): '(4)' -> '(437)'
-(479.22): '(479)' -> '(479.2)'
-(479.24): '(479)' -> '(479.2)'
-(479.25): '(479)' -> '(479.2)'
-(497.11): '(497)' -> '(497.1)'
-(497.16): '(497)' -> '(497.1)'
-(512.317): '(5)' -> '(512.31)'
-(512.318): '(5)' -> '(512.31)'
-(517.9): '(5)' -> '(517)'
-(548.7): '(54)' -> '(548)'
-(548.82): '(54)' -> '(548)'
-(549.1): '(54)' -> '(549)'
-(549.3): '(54)' -> '(549)'
-(575.1): '(57)' -> '(575)'
-(575.2): '(57)' -> '(575)'
-(575.3): '(57)' -> '(575)'
-(575.4): '(57)' -> '(575)'
-(620): '(6)' -> '(62)'
-(624): '(6)' -> '(62)'
-(630): '(6)' -> '(63)'
-(635): '(6)' -> '(63)'
-(66): '(6)' -> '(66/69)'
-(67): '(6)' -> '(66/69)'
-(674.1): '(67)' -> '(674)'
-(674.3): '(67)' -> '(674)'
-(68): '(6)' -> '(66/69)'
-(689.1): '(68)' -> '(689)'
-(689.4): '(68)' -> '(689)'
-(689.7): '(68)' -> '(689)'
-(69): '(6)' -> '(66/69)'
-(729.1): '(729)' -> '(729.1/.5)'
-(729.2): '(729)' -> '(729.1/.5)'
-(=1/=2): '(=1/=8)' -> '(=1/=9)'
-(=13): '(=1/=2)' -> '(=1)'
-*: 'heading-2' -> '*, A/Z'
-A/Z: 'heading-2' -> '*, A/Z'
--044.3: '-04' -> '-044'
--044.4: '-04' -> '-044'
--044.5: '-04' -> '-044'
--044.6: '-04' -> '-044'
--044.7: '-04' -> '-044'
--044.8: '-04' -> '-044'
--044.9: '-04' -> '-044'
--055.1: '-055' -> '-055.1/.4'
--055.2: '-055' -> '-055.1/.4'
--055.3: '-055' -> '-055.1/.4'
--055.5: '-055' -> '-055.5/.7'
--055.6: '-055' -> '-055.5/.7'
--055.7: '-055' -> '-055.5/.7'
-001.32: '001' -> '001.3'
-003.22: '003.21/.23' -> '003.22/.23'
-003.23: '003.21/.23' -> '003.22/.23'
-006.91: '006' -> '006.9'
-006.92: '006' -> '006.9'
-011: '01' -> '011/016'
-012: '01' -> '011/016'
-013: '01' -> '011/016'
-014: '01' -> '011/016'
-015: '01' -> '011/016'
-016: '01' -> '011/016'
-070: '0' -> '07'
-2-523: '2-5' -> '2-52'
-2-526: '2-5' -> '2-52'
-285: '28' -> '285/286'
-286: '28' -> '285/286'
-303: '3' -> '30'
-304: '3' -> '30'
-305: '3' -> '30'
-308: '3' -> '30'
-311: '3' -> '31'
-314/316: '3' -> '31'
-364-1: '364' -> '364-1/-7'
-364-2: '364' -> '364-1/-7'
-364-3: '364' -> '364-1/-7'
-364-4: '364' -> '364-1/-7'
-364-5: '364' -> '364-1/-7'
-364-6: '364' -> '364-1/-7'
-364-7: '364' -> '364-1/-7'
-54-1: '54-1/-4' -> '54-1/-7'
-54-3: '54-1/-4' -> '54-1/-7'
-54-4: '54-1/-4' -> '54-1/-7'
-553.3: '553.3/.9' -> '553.3/.4'
-553.4: '553.3/.9' -> '553.3/.4'
-582.32: '582.32/.998' -> '582.32/.9'
-582.4: '582.361/.99' -> '582.3/.9'
-582.5/.9: '582.361/.99' -> '582.3/.9'
-594: '592/599' -> '593.5/599'
-595: '592/599' -> '593.5/599'
-595.7: '595' -> '595.4/.7'
-596/599: '592/599' -> '595.8/599'
-596.2: '596/599' -> '596'
-597.2/.5: '597/599' -> '597'
-597.6/.9: '597/599' -> '597'
-598: '597/599' -> '598/599'
-598.1: '598' -> '598.1/.2'
-598.2: '598' -> '598.1/.2'
-599: '597/599' -> '598/599'
-599.35/.38: '599.3/.8' -> '599.3'
-599.39: '599.3/.8' -> '599.3'
-599.82/.89: '599.8' -> '599.818/.89'
-599.88: '599.82/.89' -> '599.88/.89'
-599.89: '599.82/.89' -> '599.88/.89'
-616-093: '616-01/-099' -> '616-093/-098'
-616-094: '616-01/-099' -> '616-093/-098'
-616-095: '616-01/-099' -> '616-093/-098'
-616-097: '616-01/-099' -> '616-093/-098'
-616-098: '616-01/-099' -> '616-093/-098'
-634: '633/635' -> '634/635'
-635: '633/635' -> '634/635'
-65: '6' -> '65/68'
-66: '6' -> '65/68'
-667.4: '667' -> '667.4/.5'
-667.5: '667' -> '667.4/.5'
-669.2: '669' -> '669.2/.8'
-67: '6' -> '65/68'
-678.5: '678' -> '678.5/.7'
-678.6: '678' -> '678.5/.7'
-678.7: '678' -> '678.5/.7'
-68: '6' -> '65/68'
-7.033: '7.03' -> '7.033/.038'
-7.034: '7.03' -> '7.033/.038'
-7.035: '7.03' -> '7.033/.038'
-7.036: '7.03' -> '7.033/.038'
-7.037: '7.03' -> '7.033/.038'
-7.038: '7.03' -> '7.033/.038'
-7.091: '7.01/.09' -> '7.09'
-77.01/.09: '77' -> '77.0'
-774: '77' -> '774/777'
-78.01: '78' -> '78.01/.09'
-78.02: '78' -> '78.01/.09'
-78.03: '78' -> '78.01/.09'
-78.04: '78' -> '78.01/.09'
-78.05: '78' -> '78.01/.09'
-78.06: '78' -> '78.01/.09'
-78.07: '78' -> '78.01/.09'
-78.08: '78' -> '78.01/.09'
-78.09: '78' -> '78.01/.09'
-781.1: '78' -> '781'
-781.2: '78' -> '781'
-781.4: '78' -> '781'
-781.6: '78' -> '781'
-781.7: '78' -> '781'
-781.8: '78' -> '781'
-796: '79' -> '796/799'
-796.32: '796.3' -> '796.31/.32'
-797: '79' -> '796/799'
-798: '79' -> '796/799'
-799: '79' -> '796/799'
-81-11: '81' -> '81-1'
-81-13: '81' -> '81-1'
-811.112.2: '811.112' -> '811.11'
-811.112.5: '811.112' -> '811.11'
-811.131.1: '811.131' -> '811.13'
-811.133.1: '811.133' -> '811.13'
-811.134.2: '811.134' -> '811.13'
-811.134.3: '811.134' -> '811.13'
-811.161.1: '811.161' -> '811.16'
-811.214.21: '811.214.2' -> '811.214.21/.22'
-82.02: '82.02/.09' -> '82.01/.09'
-82.09: '82.02/.09' -> '82.01/.09'
-821.214.21: '821.214' -> '821.214.21/.24'
-821.214.32: '821.214' -> '821.214.3'
-821.353: '821.3' -> '821.35'
-821.511.111: '821.511.11' -> '821.511'
-821.511.113: '821.511.11' -> '821.511'
-821.511.141: '821.511.14' -> '821.511'
-929.5: '92' -> '929'
-929.6: '92' -> '929'
-929.7: '92' -> '929'
-929.9: '92' -> '929'
-
-== Cambios de etiqueta (227)
-+: 'Coordination. Addition (plus sign). Table 1a' -> 'Coordination. Addition'
-/: 'Consecutive extension (oblique stroke sign). Table 1a' -> 'Consecutive extension'
-:: 'Simple relation (colon sign). Table 1b' -> 'Simple relation'
-::: 'Order-fixing (double colon sign). Table 1b' -> 'Order fixing'
-[]: 'Subgrouping (square brackets). Table 1b' -> 'Subgrouping'
-=...: 'Common auxiliaries of language. Table 1c' -> 'Table 1c - Common auxiliaries of language'
-=...`01/`08: 'Special auxiliary subdivision for origins, periods of language and phases of development' -> 'Special auxiliary subdivision for origins and periods and phases of development'
-=...`01: 'Old period. Archaic period' -> 'Archaic period. Old and early period. Earliest forms'
-=112.2: 'German' -> 'German (High German, Standard written German)'
-=112.5: 'Dutch' -> 'Dutch (Flemish in Belgium and north-eastern France)'
-=113: 'North Germanic / Nordic languages' -> 'North Germanic (Nordic) languages'
-=122: 'Umbro-Sabellian / Osco-Umbrian languages' -> 'Umbro-Sabellian (Osco-Umbrian) languages'
-=131: 'Italo-Romance languages' -> 'Italo-Romance languages. Southern Romance languages. Gallo-Italian languages'
-=132: 'Rhaeto-Romance languages' -> 'Rheto-Romance / Rhaetian languages'
-=133: 'Gallo-Romance languages' -> 'Oïl / Oil languages'
-=134.2: 'Spanish' -> 'Spanish / Castilian'
-=134.4: 'Gallegan / Galician' -> 'Galician / Gallegan'
-=135.1: 'Romanian' -> 'Romanian / Daco-Romanian'
-=14: 'Greek / Hellenic' -> 'Greek'
-=16: 'Slavic languages' -> 'Slavic / Slavonic languages'
-=161: 'East Slavic languages' -> 'East Slavic / Slavonic languages'
-=162: 'West Slavic languages' -> 'West Slavic / Slavonic languages'
-=163: 'South Slavic languages' -> 'South Slavic / Slavonic languages'
-=163.6: 'Slovenian' -> 'Slovenian / Slovene'
-=174: 'Latvian / Lettish' -> 'Latvian (Lettish)'
-=214.27: 'Punjabi / Panjabi' -> 'Punjabi (Panjabi)'
-=214.32: 'Bengali / Bangla' -> 'Bengali (Bangla)'
-=353: 'Southern Caucasian / Kartvelian group' -> 'Southern Caucasian / Kartvelian language group'
-=361: 'Basque / Euskera / Euskara' -> 'Basque (Euskera, Euskara)'
-=4: 'Afro-Asiatic, Nilo-Saharan, Congo-Kordofanian, Khoisan languages' -> 'Afro-Asiatic, Nilo-Saharan, Niger-Congo, Khoisan languages'
-=411.1: 'North Semitic languages' -> 'East and Northwest Semitic languages'
-=411.2: 'South-west Semitic languages' -> 'Arabic languages / South-west Semitic languages'
-=411.3: 'South-east Semitic languages' -> 'Old South Arabian languages / South-east Semitic languages'
-=412: 'Egyptian-Coptic' -> 'Egyptian and Coptic'
-=45: 'Khoisan languages' -> 'Khoisan languages (scientifically obsolete)'
-=5: 'Ural-Altaic, Palaeo-Siberian, Eskimo-Aleut, Dravidian and Sino-Tibetan languages. Japanese. Korean. Ainu' -> 'Ural-Altaic, Palaeo-Siberian, Eskimo-Aleut, Dravidian and Sino-Tibetan languages. Japanese. Korean'
-=512.13: 'Eastern / Karluk group of Turkic languages' -> 'Eastern (Karluk) group of Turkic languages'
-=512.154: 'Kirghiz / Kyrgiz / Kirgiz' -> 'Kirghiz (Kyrgiz, Kirgiz)'
-=512.161: 'Turkish / Osmanli' -> 'Turkish (Osmanli)'
-=512.3: 'Mongolian languages' -> 'Mongolic languages'
-=611: 'Malacca / Aslian group' -> 'Malacca (Aslian) group'
-=621.251: 'Malay / Bahasa Indonesia / Bahasa Malaysia' -> 'Malay (Bahasa Indonesia; Bahasa Malaysia)'
-=7: 'Indo-Pacific / non-Austronesian languages. Australian languages' -> 'Indo-Pacific (non-Austronesian) languages. Australian languages'
-=713: 'New Guinean / Papuan languages' -> 'New Guinean (Papuan) languages'
-=718: 'Tasmanian' -> 'Tasmanian / Palawa languages'
-=852.51: 'Mapuche / Mapudungun' -> 'Mapuche (Mapudungun)'
-(0...): 'Common auxiliaries of form. Table 1d' -> 'Table 1d - Common auxiliaries of form'
-(083): 'Technical and normative documents. Tables. Lists' -> 'Technical and normative documents. Tables. Lists, etc.'
-(091): 'Presentation in chronological, historical form. Historical presentation in the strict sense' -> 'Presentation in chronological, historical form. Historical presentation (in the strict sense)'
-(1/9): 'Common auxiliaries of place. Table 1e' -> 'Table 1e - Common auxiliaries of place'
-(1-6): 'States or groupings of states from various points of view' -> 'States or groupings of states, regions, territories from various points of view'
-(474): 'Baltic states in general' -> 'Baltic countries'
-(476): 'Belarus. Republic of Belarus. Respublika Belarus' -> "Belarus. Republic of Belarus. Re'spublika / Respublika Belarus’"
-(477): 'Ukraine (Ukraina). Ukrayina' -> 'Ukraine. Ukraina'
-(478): 'Moldova. Republic of Moldova. Republica Moldoveneasca' -> 'Moldova. The Republic of Moldova. Republica Moldoveneasca'
-(479): 'Countries of the Caucasus region' -> 'Caucasus (as a whole)'
-(48): 'Scandinavian States' -> 'Scandinavian countries'
-(497): 'Balkan states' -> 'Countries of the Balkan peninsula'
-(497.7): 'Macedonia. Former Yugoslav Republic of Macedonia. Republika Makedonija' -> 'North Macedonia. Republic of North Macedonia. Republika Severna Makedonija. Republika e Maqedonisë së Veriut'
-(519): 'Korea' -> 'Korea (to 1948)'
-(53): 'Arabian states and territories' -> 'Countries of the Arabian peninsula'
-(536): 'East Arabian states (Gulf states)' -> 'Countries of the East Arabian peninsula (Gulf states)'
-(54): 'States of the Indian subcontinent' -> 'Countries of the Indian subcontinent'
-(540): 'India. Republic of India. Bhārat Gaṇarājya' -> 'India. Republic of India. Bharat Gaṇarajya'
-(55): 'Iran. Islamic Republic of Iran. Jomhuri-ye Eslāmi-ye Irān' -> 'Iran. Islamic Republic of Iran. Jomhuri-ye Eslami-ye Iran'
-(56): 'Levant. Asia Minor' -> 'Countries of the Eastern Mediterranean and the Anatolian peninsula'
-(569.1): 'Syria. Syrian Arab Republic. Sūryā. Al-Jumhūriyyah al-ʿArabiyyah as-Sūriyyah' -> "Syria. Syrian Arab Republic. Surya. Al-Jumhuriyyah al-'Arabiyyah as-Suriyyah"
-(569.3): 'Lebanon. Republic of Lebanon. Lubnān. Liban. al-Jumhūrīyah al-Lubnānīyah. République libanaise' -> 'Lebanon. Republic of Lebanon. Lubnan. Liban. al-Jumhuriyah al-Lubnaniyah. République libanaise'
-(57): 'Former Asiatic USSR' -> 'Northern Asia. Former Asiatic USSR'
-(575.4): 'Turkmenistan. Republic of Tukmenistan.Turkmenia. Türkmenistan Respublikasy' -> 'Turkmenistan. Türkmenistan'
-(581): 'Afghanistan. Islamic Republic of Afghanistan. Afganistan. Jomhūrī-ye Eslāmī-ye Afġānistān. Da Afġānistān Islāmī Jomhoriyat' -> 'Afghanistan. Islamic Republic of Afghanistan. Afganistan. Jomhuri-ye Eslami-ye Afganistan. Da Afganistan Islami Jomhoriyat'
-(59): 'South-east Asian states and territories' -> 'Countries of South-east Asia'
-(591): 'Myanmar (Burma). Republic of the Union of Myanmar. Pyidaunzu Thanmăda Myăma Nainngandaw' -> 'Myanmar / Burma. Republic of the Union of Myanmar. Pyidaunzu Thanmăda Myăma Nainngandaw'
-(596/598): 'Indo-China' -> 'Countries of the Indochinese peninsula (Indo-China)'
-(61): 'North African states in general. Maghreb. Barbary States' -> 'Libya and Tunisia'
-(620): 'Egypt. Arab Republic of Egypt. Miṣr. Ǧumhūrīyâtu Miṣra l-ʿArabīyâ' -> "Egypt. Arab Republic of Egypt. Misr. Gumhuriyatu Miṣra l-'Arabiya"
-(624): 'Republic of the Sudan. Republic of South Sudan' -> 'Sudan (to 2011)'
-(635): 'Eritrea. State of Eritrea. Ertra. Hagəre Ertra (Dawlâtu Iritrīya)' -> 'Eritrea. State of Eritrea. Ertrā. Hagəre Ertra (Dawlātu Iritrīyā)'
-(64): 'Morocco. Kingdom of Morocco. al-Maġrib. al-Mamlakâtu l-Maġribīyâ' -> 'Morocco. Kingdom of Morocco. Al-Maġrib. Al-Mamlakâtu l-Maġribīyâ'
-(66): 'West African states and territories narrowly' -> 'Countries of West Africa narrowly'
-(662.5): "Burkina Faso. People's Democratic Republic of Burkina Faso. République Démocratique Populaire de Burkina Faso" -> "Burkina Faso. People's Democratic Republic of Burkina Faso"
-(662.6): 'Niger. Republic of Niger. République du Niger' -> 'Niger. Republic of Niger'
-(663): 'Senegal. Republic of Senegal. République du Senegal' -> 'Senegal. Republic of Senegal'
-(668.2): 'Benin. Republic of Benin. République du Bénin' -> 'Benin. Republic of Benin. Bénin. République du Bénin'
-(669.95): 'São Tomé and Príncipe. Democratic Republic of São Tomé and Príncipe. República Democrática de São Tomé e Príncipe' -> 'São Tomé and Príncipe. Democratic Republic of São Tomé and Príncipe. República Democática de São Tomé e Príncipe'
-(67): 'Equatorial, central and eastern African states and territories' -> 'Countries of equatorial, central and eastern Africa'
-(671.1): 'Cameroon. United Republic of Cameroon' -> 'Cameroon. Repubic of Cameroon'
-(673): 'Angola. Republic of Angola' -> 'Angola. Republic of Angola. República de Angola'
-(677.8): 'Somalia. Federal Republic of Somalia. Jamhuriyadda Dimugradiga ee Soomaaliya. Jumhūrīyat aṣ-Ṣūmāl al-Fidirālīyah' -> 'Somalia. Federal Republic of Somalia. Jamhuriyadda Dimugradiga ee Soomaaliya. Jumhuriyat aṣ-Ṣumal al-Fidiralīyah'
-(68): 'States and territories of Southern Africa' -> 'Countries of southern Africa narrowly'
-(688.7): 'Swaziland. Kingdom of Swaziland. Umbuso weSwatini' -> 'Eswatini. Kingdom of Eswatini. Umbuso weSwatini'
-(698): 'Mascarene Islands' -> 'Mascarene Islands. Tromelin Island'
-(698.1): 'Réunion (France)' -> 'Réunion (region and department) (France)'
-(698.2): 'Mauritius. Republic of Mauritius. Repiblik Moris. République de Maurice' -> 'Mauritius. Republic of Mauritius. République de Maurice'
-(72): 'Mexico. Central American states. Caribbean territories' -> 'Mexico. Countries of Central America. Countries and territories of the Caribbean'
-(728): 'Central American states' -> 'Countries of Central America'
-(728.7): 'Panama. Republic of Panama. República de Panamá' -> 'Panama. Republic of Panama. Panamá. República de Panamá'
-(729): 'Caribbean territories. West Indies (Antilles)' -> 'Countries and territories of the Caribbean. West Indies (Antilles)'
-(882): "French Guiana. Department of Guiana. Guyane française. Guyane (département d'outre-mer)" -> 'Guyane. Guyane française. French Guiana (region and department) (France)'
-(9): 'States and regions of the South Pacific and Australia. Arctic. Antarctic' -> 'Countries and territories of the South Pacific and Australia. Arctic. Antarctic'
-(932/935): 'Melanesia. States and regions of Melanesia' -> 'Countries and territories of Melanesia'
-(961/964): 'Polynesia. States and regions of Polynesia' -> 'Countries and territories of Polynesia'
-(966/968): 'Micronesia. States and regions of Micronesia' -> 'Countries and territories of Micronesia'
-(988): 'Greenland / Gronland (Denmark)' -> 'Greenland. Kalaallit Nunaat. Grønland (Kingdom of Denmark)'
-(99): 'Antarctic territories. South Polar regions' -> 'Subantarctic and Antarctic territories. South Polar regions'
-(=...): 'Common auxiliaries of human ancestry, ethnic grouping and nationality. Table 1f' -> 'Table 1f - Common auxiliaries of human ancestry, ethnic grouping and nationality'
-(=011): 'European Continental Ancestry Group' -> 'European continental ancestry group'
-(=012): 'Asian Continental Ancestry Group' -> 'Asian continental ancestry group'
-(=013): 'African Continental Ancestry Group' -> 'African continental ancestry group'
-(=014): 'Oceanic Ancestry Group' -> 'Oceanic ancestry group'
-(=017): 'American Native Continental Ancestry Group' -> 'American native continental ancestry group'
-(=13): "Romanic, 'Latin' peoples" -> "Romanic / Romance, 'Latin' peoples"
-"...": 'Common auxiliaries of time. Table 1g' -> 'Table 1g - Common auxiliaries of time'
-"5": 'Periodicity. Frequency. Recurrence at specified intervals.' -> 'Periodicity. Frequency. Recurrence at specified intervals'
-"61": 'Precambrian (more than 542 MYBP) (supereon)' -> 'Precambrian (ca 4600-542 MYBP) (supereon)'
-"67": 'Universal time reckoning. Before Present' -> 'Universal time reckoning. Before present'
-*: 'Introduces non-UDC notation (asterisk). Table 1h' -> 'The asterisk, general non-UDC notation'
-A/Z: 'Direct alphabetical specification. Table 1h' -> 'Direct alphabetical specification'
--0...: 'Common auxiliaries of general characteristics: Properties, Materials, Relations/Processes and Persons. Table 1k.' -> 'Table 1k - Common auxiliaries of general characteristics'
--02: 'Common auxiliaries of properties. Table 1k' -> 'Table 1k - Common auxiliaries of properties'
--024: 'Properties of structure. Properties of position' -> 'Properties of structure'
--028: 'Properties of style and presentation' -> 'Properties of information presentation, style, authorship, content, arrangement, access'
--03: 'Common auxiliaries of materials. Table 1k' -> 'Table 1k - Common auxiliaries of materials'
--04: 'Common auxiliaries of relations, processes and operations. Table 1k' -> 'Table 1k - Common auxiliaries of relation, processes and operations'
--045: 'Processes related to position, arrangement, movement, physical properties, states of matter' -> 'Processes related to position, arrangement, movement'
--05: 'Common auxiliaries of persons and personal characteristics. Table 1k' -> 'Table 1k - Common auxiliaries of persons and personal characteristics'
--055: 'Persons according to gender and kinship' -> 'Persons according to sex, gender and kinship'
-004: 'Computer science and technology. Computing. Data processing' -> 'Computer Science and Technology. Computing. Data processing'
-004.6: 'Data' -> 'Data. Data sets'
-007: "Activity and organizing. Communication and control theory generally (cybernetics). 'Human engineering'" -> 'Systems science and systems theory. Information and communication theory. Control theory (cybernetics)'
-050: 'Serial publications, periodicals (as subject)' -> 'Serial publications. Periodicals'
-172: 'Social ethics. Duties to one`s fellow humans' -> "Social ethics. Duties to one's fellow humans"
-2-13: 'The Holy. The sacred. The supernatural. Object(s) of religion/worship' -> 'The Holy. The sacred. The supernatural. Object(s) of religion / worship'
-272: 'Roman Catholic church' -> 'Roman Catholic Church'
-284: "Shi'a. Shi'ite Islam" -> "Shia / Shi'a Islam. Shi'ite Islam"
-285: "Babi-Baha'i" -> 'Bábism / Bayání Faith. Bábís'
-286: "Baha'i" -> "Baha'i Faith. Baha'is"
-37.01/.09: 'Special auxiliary table for theory, principles, methods and organization of education' -> 'Special auxiliary subdivision for theory, principles, methods and organization of education'
-398: 'Folklore in the strict sense' -> 'Folklore (in the strict sense)'
-528.9: 'Cartography. Mapping  (textual documents)' -> 'Cartography. Mapping (textual documents)'
-54.05: 'Production. Preparation. Isolation. Purification etc.' -> 'Production. Preparation. Isolation. Purification, etc.'
-544.01: 'Chemical substances and systems. Origin. Natural state. Phases' -> 'Chemical substances and systems: origin, natural state, phases'
-544.02: 'Chemical composition. Structure. Isotopes etc.' -> 'Chemical composition. Structure. Isotopes, etc.'
-55: 'Earth Sciences. Geological sciences' -> 'Earth sciences. Geological sciences'
-582.23: 'Bacteria (as plants)' -> 'Bacteria'
-582.24: 'Protista (protists). Chromista' -> 'Protista (Protoctista). Chromista. Protozoa'
-582.28: 'Fungi. Eumycota / Eumycetes (true fungi). Moulds' -> 'Fungi'
-582.32: 'Bryophyta (Musci)' -> 'Bryophyta (non vascular plants) in general'
-582.5/.9: 'Magnoliophyta (angiosperms / covered seed plants)' -> 'Magnoliophyta / Angiospermae (angiosperms / covered seed plants)'
-592: 'Invertebrata (invertebrates)' -> 'Placozoa'
-594: 'Mollusca. Bryozoa. Brachiopoda' -> 'Mollusca (moluscs)'
-595: 'Articulata' -> 'Lophotrochozoa. Platyzoa. Ecdysozoa'
-595.7: 'Hexapoda. Insecta (insects)' -> 'Hexapoda'
-596/599: 'Chordata' -> 'Chordata (chordates)'
-596.2: 'Tunicata / Urochordata (tunicates)' -> 'Tunicata (tunicates)'
-599.81: 'Prosimii (prosimians)' -> 'Prosimii (prosimians) (scientifically outdated)'
-599.82: 'Platyrrhini (New World monkeys)' -> 'Platyrrhini'
-616-76: 'Corrective and protective appliances, aids etc.' -> 'Corrective and protective appliances, aids, etc.'
-616-77: 'Prosthetic materials and parts. Artificial organs etc.' -> 'Prosthetic materials and parts. Artificial organs, etc.'
-62-3: 'Fluid control parts and drives. Valves, closures etc.' -> 'Fluid control parts and drives. Valves, closures, etc.'
-62-93: 'Processes, machines and equipment according to mode of working, continuity, associations, media' -> 'Processes, machines and equipment according to mode of working, continuity, associations, media, directness, mechanisation'
-62-94: 'Direction, velocity, rate, duration of processes etc.' -> 'Direction, velocity, rate, duration of processes, etc.'
-630*6: 'Forest management. Business economics of forestry.  Administration and organization of forest enterprises' -> 'Forest management. Business economics of forestry. Administration and organization of forest enterprises'
-636.08: 'General questions of breeding and rearing' -> 'Breeding and rearing'
-636.3: 'Small ruminants' -> 'Small ruminants. Sheep. Goats'
-639.5: 'Breeding of aquatic crustaceans' -> 'Breeding of aquatic crustaceans, sea urchins, leeches, etc.'
-64.05: 'Home economics. Housekeeping, furnishing and equipping a home etc. for particular kinds of person' -> 'Home economics. Housekeeping, furnishing and equipping a home, etc. for particular kinds of person'
-649: 'Domestic care of children, invalids, guests' -> 'Domestic care of children, the disabled, guests'
-664.1: 'Sugar. Molasses. Glucose etc.' -> 'Sugar. Molasses. Glucose, etc.'
-667.7: 'Colouring, staining etc., of various materials (except printing and painting)' -> 'Colouring, staining, etc., of various materials (except printing and painting)'
-678.6: 'Synthetic polycondensation products. Polycondensates. Synthetic resins. Synthetic fibres etc.' -> 'Synthetic polycondensation products. Polycondensates. Synthetic resins. Synthetic fibres, etc.'
-684.6: 'Veneering. Marquetry. Inlay etc.' -> 'Veneering. Marquetry. Inlay, etc.'
-685.2: 'Accoutrements. Beltmaking. Leather equipment and analogous products' -> 'Accoutrements. Beltmaking. Leather and other equipment'
-687.9: 'Brush industry. Brooms etc.' -> 'Brush industry. Brooms, etc.'
-7: 'THE ARTS. RECREATION. ENTERTAINMENT. SPORT' -> 'ARTS. RECREATION. SPORT'
-7.033: 'Mediaeval art (Christian, Islamic art)' -> 'Mediaeval artistic styles (Christian, Islamic art)'
-7.05: 'Applications of art (in industry, trade, the home, everyday life)' -> 'Applications of art (in industry, trade, the home, everyday life). Industrial, commercial design, etc.'
-7.08: 'Characteristic features, forms, combinations etc. (in art, entertainment and sport)' -> 'Characteristic features, forms, combinations, etc. (in art, entertainment and sport)'
-7.091: 'Performance, presentation (in original medium)' -> 'Performance, presentation in original medium'
-718: 'Cemeteries. Graveyards. Crematoriums. Other places for disposal of the dead (planning, design, upkeep etc.)' -> 'Cemeteries. Graveyards. Crematoriums. Other places for disposal of the dead (planning, design, upkeep, etc.)'
-741.5: 'Caricature. Cartoons. Satirical and humorous drawings' -> 'Caricature. Cartoons'
-784.4: 'Popular, traditional, historic vocal music' -> 'Popular, traditional, historic songs'
-793.2: 'Particular social recreations, requiring preparations' -> 'Social recreations, amusement'
-796: 'Sport. Games. Physical exercises' -> 'Outdoor games and recreation. Physical exercise. Ball games. Gymnastics. Athletics. Wheel sports. Combat sports. Winter sports'
-796.08: 'Participation (number of players), combinations etc.' -> 'Participation (number of players), combinations, etc.'
-798.8: 'Canine sports. Dog racing etc.' -> 'Canine sports. Dog racing, etc.'
-811.112.5: 'Dutch language' -> 'Dutch (Flemish in Belgium and north-eastern France)'
-811.113: 'North Germanic (Nordic) languages' -> 'North Germanic, Nordic (Scandinavian) languages'
-811.163.4: 'Serbian and Croatian languages' -> 'Serbian and Croatian'
-811.214.32: 'Bengali (Bangla) language' -> 'Bengali (Bangla) languages'
-811.5: 'Ural-Altaic, Palaeo-Siberian, Eskimo-Aleut, Dravidian and Sino-Tibetan languages. Japanese. Korean. Ainu' -> 'Ural-Altaic, Japanese, Korean, Ainu, Palaeo-Siberian, Eskimo-Aleut, Dravidian languages, Sino-Tibetan languages'
-82-1/-9: 'Special auxiliary subdivision for literary forms, genres' -> 'Special auxiliary subdivision for literary forms and genres'
-82-7: 'Prose satire. Humour, epigram, parody etc.' -> 'Prose satire. Humour, epigram, parody, etc.'
-82-8: 'Miscellanea. Polygraphies. Selections' -> 'Miscellanies. Polygraphies. Selections'
-821.1/.2: 'Indo-European literature' -> 'Literature in Indo-European languages'
-821.11: 'Literature of Germanic languages' -> 'Literature in Germanic languages'
-821.112: 'West Germanic literatures (other than English)' -> 'Literature in West Germanic languages (other than English)'
-821.113: 'North Germanic, Nordic (Scandinavian) literatures' -> 'Literature in North Germanic / Nordic / Scandinavian languages'
-821.12: 'Literature of Italic languages' -> 'Literature in Italic languages'
-821.13: 'Literature of Romance (Romanic) languages' -> 'Literature in Romance / Romanic languages'
-821.131: 'Literature of Italo-Romance / Italo-Romanic languages' -> 'Literature in Italo-Romance / Italo-Romanic languages'
-821.133: 'Literature of Gallo-Romance / Gallo-Romanic languages' -> 'Literature in Gallo-Romance / Gallo-Romanic languages'
-821.134: 'Literature of Ibero-Romance / Ibero-Romanic) languages' -> 'Ibero-Romance literature'
-821.135: 'Literature of Balkan Romance / Romanic languages' -> 'Literature in Eastern Romance (Balkan) languages'
-821.16: 'Literature of Slavic (Slavonic) languages' -> 'Literature in Slavic / Slavonic languages'
-821.161: 'East Slavic / Slavonic literature' -> 'Literature in East Slavic / Slavonic languages'
-821.162: 'West Slavic / Slavonic literatures' -> 'Literature in West Slavic / Slavonic languages'
-821.163: 'South Slavic / Slavonic literatures' -> 'Literature in South Slavic / Slavonic languages'
-821.163.4: 'Serbian literature. Croatian literature' -> 'Literature in Serbian and Croatian languages'
-821.17: 'Literature of Baltic languages' -> 'Literature in Baltic languages'
-821.21/.22: 'Literature of Indo-Iranian languages' -> 'Literature in Indo-Iranian languages'
-821.21: 'Indic literatures' -> 'Literature in Indic languages'
-821.214: 'Literature of modern Indic languages' -> 'Literature in modern Indic languages'
-821.214.32: 'Bengali (Bangla) literature' -> 'Bengali literature'
-821.3: 'Literature of Caucasian languages. Literature of dead languages of unknown affiliation' -> 'Literature in Caucasian languages. Literature in dead languages of unknown affiliation'
-821.353: 'South Caucasian (Kartvelian) literature' -> 'Literature in South Caucasian (Kartvelian) languages'
-821.4: 'Literature of Afro-Asiatic, Nilo-Saharan, Congo-Kordofanian, Khoisan languages' -> 'Literature in Afro-Asiatic, Nilo-Saharan, Niger-Congo, Khoisan languages'
-821.5: 'Literature of Ural-Altaic, Japanese, Korean, Ainu, Palaeo-Siberian, Eskimo-Aleut, Dravidian languages, Sino-Tibetan languages' -> 'Literature in Ural-Altaic, Japanese, Korean, Ainu, Palaeo-Siberian, Eskimo-Aleut, Dravidian, Sino-Tibetan languages'
-821.51: 'Literature of Ural-Altaic languages' -> 'Literature in Ural-Altaic languages'
-821.511: 'Literature of Uralic languages' -> 'Literature in Uralic languages'
-821.511.1: 'Literature of Finno-Ugric languages' -> 'Literature in Finno-Ugric languages'
-821.511.11: 'Literature of Finnic languages' -> 'Literature in Finnic languages'
-821.511.14: 'Literature of Ugric languages' -> 'Literature in Ugric languages'
-821.58: 'Literature of Sino-Tibetan languages' -> 'Literature in Sino-Tibetan languages'
-821.6: 'Literature of Austro-Asiatic languages. Austronesian literature' -> 'Literature in Austro-Asiatic languages. Literature in Austronesian languages'
-821.7: 'Literature of Indo-Pacific (non-Austronesian) languages. Australian (Aboriginal) literature' -> 'Literature in Indo-Pacific (non-Austronesian) languages. Literature in Australian (aboriginal) languages'
-821.8: 'Literature of American indigenous languages (Amerindian literatures)' -> 'Literature in American indigenous / Amerindian languages'
+== canceladas: reemplazo fuera del árbol (queda como texto) (966)
+06.052 -> 005.311.6
+06.067 -> 371.27
+37.035.91 -> 37.035
+65.012.123 -> 005.311.6
+65.015.12 -> 72.012.22
+65.017.32 -> -022.52
+66-965.1 -> 62-493.5
+66-971.2 -> 62-971.2
+66-971.4 -> 62-971.4
+069.016 -> 371.65
+72.011.2 -> 72.012.2
+72.011.3 -> 72.012.3
+72.011.6 -> 72.012.6
+72.011.22 -> 72.012.22
+72.011.23 -> 72.012.23
+72.011.24 -> 72.012.24
+72.011.25 -> 72.012.25
+72.011.26 -> 72.012.26
+72.011.27 -> 72.012.27
+72.011.28 -> 72.012.28
+72.011.32 -> 72.012.32
+72.011.185 -> 72.012.185
+81`0 -> 81`01/`08
+81`2/`44 -> 81`2/`4
+82.085.11 -> 372.461
+82`0 -> 82`01/`06
+93/99 -> 93
+94(411)"1057/1314" -> 94(411)
+94(411)"1314/1424" -> 94(411)
+94(411)"1424/1542" -> 94(411)
+94(411)"1542/1603" -> 94(411)
+94(411)"1603/1707" -> 94(411)
+94(411)"1707/1837" -> 94(411)
+94(411)"1837/..." -> 94(411)
+94(411)".../1057" -> 94(411)
+94(411).0 -> 94(411)
+94(411).05 -> 94(411)
+94(420)"1066/1154" -> 94(420)
+94(420)"1154/1399" -> 94(420)
+94(420)"1399/1485" -> 94(420)
+94(420)"1485/1603" -> 94(420)
+94(420)"1603/1714" -> 94(420)
+94(420)"1714/1837" -> 94(420)
+94(420)"1837/1901" -> 94(420)
+94(420)"1837/..." -> 94(420)
+94(420)"1901/1910" -> 94(420)
+94(420)"1910/1936" -> 94(420)
+94(420)"1936" -> 94(420)
+94(420)"1936/1952" -> 94(420)
+94(420)"1952/..." -> 94(420)
+94(420)".../1066" -> 94(420)
+94(420).0 -> 94(420)
+94(669)"1886/1960" -> 94(669)
+94(669)"1960/..." -> 94(669)
+94(669)".../1886" -> 94(669)
+94(669).0 -> 94(669)
+94(669).01 -> 94(669)
+94(669).03 -> 94(669)
+94(669).05 -> 94(669)
+94(678.1)"1700/1890" -> 94(678.1)
+94(678.1)"1890/1963" -> 94(678.1)
+94(678.1)"1963/..." -> 94(678.1)
+94(678.1)".../1700" -> 94(678.1)
+94(678.1).0 -> 94(678.1)
+94(678.2)"1884/1916" -> 94(678.2)
+94(678.2)"1916/1961" -> 94(678.2)
+94(678.2)"1961/..." -> 94(678.2)
+94(678.2)".../1884" -> 94(678.2)
+94(678.2).0 -> 94(678.2)
+232.92 -> 27-312.3
+241.6 -> 27-428-23
+241.6 -> 27-428-242.6
+241.62 -> 27-428-242.6.4
+241.63 -> 27-428-242.6.5
+241.64 -> 27-428-242.6.6
+241.65 -> 27-428-242.6.7
+241.66 -> 27-428-242.6.8
+241.81 -> 27-726.6
+241.82 -> 27-725
+241.612 -> 27-428-242.6.2
+241.613 -> 27-428-242.6.2
+241.614 -> 27-428-242.6.1
+241.615 -> 27-428-242.6.2
+241.616 -> 27-428-242.6.2
+241.617 -> 27-428-242.6.2
+241.618 -> 27-428-242.6.2
+241.619 -> 27-428-242.6.2
+241.631 -> 27-428-242.6.5
+241.632 -> 27-428-242.6.5
+241.633 -> 27-428-242.6.5
+241.634 -> 27-428-242.6.5
+241.635 -> 27-428-242.6.5
+241.661 -> 27-428-242.6.8
+241.662 -> 27-428-242.6.8
+241.663 -> 27-428-242.6.8
+241.664 -> 27-428-242.6.8
+241.665 -> 27-428-242.6.8
+241.666 -> 27-428-242.6.8
+248.153.8 -> 27-567
+254 -> 27-725
+254.1 -> 27-725
+254.2 -> 27-725
+254.3 -> 27-725
+254.4 -> 27-725
+255 -> 27-786
+260.2 -> 27-726.6
+261.625 -> 27-484.7
+262.1 -> 27-725
+262.12 -> 27-726.2
+262.13 -> 272-732.2
+262.14 -> 27-725
+262.15 -> 27-726.4
+262.16 -> 27-725
+262.132 -> 272-732.2
+262.133 -> 272-732.2
+262.135 -> 272-732.2
+262.136 -> 272-745
+262.136.1 -> 272-745.2
+262.136.1/.3 -> 272-745
+262.136.2 -> 272-745.5
+262.136.3 -> 272-745.4
+262.136.4 -> 272-745.6
+262.136.6 -> 272-732.2
+262.136.7 -> 272-732.2
+262.141 -> 27-726.25
+262.142 -> 27-726.25
+262.143 -> 27-726.3
+262.144 -> 27-726.4
+262.145 -> 27-725
+262.146 -> 27-76-051
+264-14 -> 27-726.2
+264-18 -> -
+264-61 -> 272-549
+264-61 -> 272-282
+264-62 -> 568
+264-79 -> 27-726.2
+264-79 -> 272-732.2
+264-937 -> 2-535.6
+264-942 -> 568
+264.02 -> 272-282
+265.31/.34 -> 272-549
+265.33 -> 272-549
+265.51 -> 27-452.5
+269.5 -> 27-567
+271-1 -> 27-788-733
+271-2 -> 27-788-558.2
+271-3 -> 27-788-544.6
+271-38 -> 27-788-544.6
+271-391 -> 27-726.6
+271-393 -> 27-725
+271.04 -> 27-726.6
+271.791 -> 27-788-35
+273.1 -> 27-87.4
+273.3 -> 27-87.525
+273.4 -> 27-87.526
+273.5 -> 27-87.568
+273.6 -> 27-87.3
+273.7 -> 27-87.82
+273.11 -> 27-87.4-3
+273.12 -> 27-87.46
+273.13 -> 27-87.45
+273.15 -> 27-87.43
+273.21 -> 27-87.47
+273.22 -> 27-87.48
+273.23 -> 27-87.62
+273.27 -> 27-87.564
+273.99 -> 27-87.9
+273.197 -> 27-87.553
+273.198 -> 27-87.554
+273.231 -> 27-87.63
+273.232 -> 27-87.645
+273.233 -> 27-87.64
+273.912 -> 27-87.555
+273.913 -> 27-87.556
+273.915 -> 27-87.524
+273.918 -> 27-87.522
+273.921 -> 27-87.566
+273.941 -> 27-87.67
+273.942 -> 27-87.63
+273.946.1 -> 27-87.72
+273.947.4 -> 27-87.73
+273.949.3 -> 27-87.74
+273.951.2 -> 27-87.75
+273.951.3 -> 27-87.77
+273.951.4 -> 27-87.76
+273.951.5 -> 27-87.84
+273.952 -> 27-87.85
+276 -> 27-9"01/07"
+281.1 -> 27-9".../1054"
+281.3 -> 27-9"0100/0325"
+281.4 -> 27-9"0325/1054"
+281.91 -> 271.2-726.1
+281.911 -> 271.2-726.1
+281.912 -> 271.2-726.1
+281.913 -> 271.2-726.1
+281.914 -> 271.2-726.1
+283.1 -> 273.4(4/9)
+284.3 -> 27-87.83
+284.4 -> 27-87.68
+286.4 -> 279.12
+291.6 -> 2-725
+291.31 -> 2-535.7
+291.36 -> 2-562
+291.61 -> 2-725
+291.212.6 -> 536.46
+291.313 -> 2-535.7
+291.315.5 -> 2-535.35
+294.527 -> 233-852.5Y
+296.38 -> 26-562
+314.5 -> 316.811.1
+314.5.06 -> 316.811
+314.5.062 -> 316.811
+314.5.063 -> 316.811.11
+314.52 -> 316.811.11
+314.53 -> 316.811.11
+314.54 -> 316.811.11
+314.56 -> 316.815
+314.58 -> 316.811.1
+314.336 -> 316.812.4
+314.336.6 -> 316.812.33
+314.422.6 -> 314.424
+314.542 -> 316.811.11
+314.544 -> 316.811.1
+314.545 -> 316.811.111
+314.545.2 -> 316.811.111
+314.545.4 -> 316.811.111
+314.546 -> 316.811.1
+314.548 -> 316.811.1
+314.548.2 -> 316.811.1
+314.548.3 -> 316.811.1
+314.552 -> 316.813
+314.554 -> 316.813.5
+314.556 -> 316.814
+314.582 -> 316.811.1
+314.585 -> 316.813.5
+314.624.2 -> 316.812
+316.835.2 -> 316.367.52
+323.35 -> 27-725
+348.15 -> 348.1
+348.15/.17 -> 348.1
+348.16 -> 348.1
+348.17 -> 348.1
+348.84.038 -> 283/289
+348.84.038.2 -> 283/289
+348.84.038.3 -> 283/289
+348.84.038.4 -> 283/289
+348.84.038.5 -> 283/289
+348.84.038.8 -> 283/289
+348.85 -> 285.1/.6
+355.33 -> 355.08
+355.292.2 -> 355.087
+355.331 -> 355.081
+355.332 -> 355.082
+355.332.1 -> 355.082.1
+355.332.2 -> 355.082.2
+355.332.4 -> 355.082.4
+355.333 -> 355.083
+355.333.1 -> 355.083.1
+355.333.3 -> 355.083.3
+355.333.4 -> 355.083.4
+355.333.5 -> 355.083.5
+355.333.6 -> 355.083.6
+355.334 -> 355.084
+355.334.1 -> 355.084.1
+355.334.2 -> 355.084.2
+355.334.3 -> 355.084.3
+355.335 -> 355.085
+355.335.1 -> 355.085.1
+355.335.2 -> 355.085.2
+355.335.3 -> 355.085.3
+355.336 -> 355.086
+355.336.1 -> 355.086.1
+355.336.2 -> 355.086.2
+355.336.3 -> 355.086.3
+355.336.4 -> 355.086.4
+355.337 -> 355.087
+355.337.1 -> 355.087.1
+355.337.2 -> 355.087.2
+355.338 -> 355.088
+355.338.1 -> 355.088
+355.338.2 -> 355.088
+355.338.3 -> 355.088
+355.338.4 -> 355.088
+355.343.1 -> 355.08
+355.343.2 -> 355.08
+355.343.3 -> 355.08
+355.343.4 -> 355.08
+355.343.6 -> 355.08
+355.343.7 -> 355.087
+355.343.8 -> 355.08
+355.343.18 -> 355.08
+356.363 -> 262.1
+364.026 -> 35.076
+364.044.24 -> 314.6
+364.052.4 -> 339.13.027
+364.122.4 -> 314.82
+364.142 -> 314.6
+364.282 -> 613.884
+364.286 -> 314.554
+369.032 -> 35.07
+369.036 -> 35.075.7
+369.046 -> 35.071.1
+369.062 -> "3746"
+369.063.2 -> "3746"
+369.063.4 -> "3746"
+369.063.22 -> "3746"
+369.063.24 -> "3746"
+369.063.42 -> "3746"
+369.063.44 -> "3746"
+369.063.44 -> "735"
+369.063.46 -> "3746"
+369.064 -> "3746"
+369.223.22 -> 725.511
+369.225.42 -> "311"
+369.347 -> 371.212.8
+369.365 -> "7123"
+369.546 -> 314.743
+369.743 -> 314.373
+369.753 -> "7129"
+371.125 -> 371.12
+371.125 -> 369
+371.388 -> 371.33
+373.542 -> 81`02
+376.2 -> 376.1
+379.853 -> 379.852
+379.854 -> 379.852
+379.855 -> 379.852
+379.857 -> 379.852
+379.858 -> 379.852
+533.9...1 -> 533.9-11
+533.9...12 -> 533.9-112
+533.9...13 -> 533.9-113
+533.9...15 -> 533.9-115
+533.9...16 -> 533.9-116
+535-21 -> 535-2-026.613.1
+535-22 -> 535-2-026.613.2
+535-23 -> 535-2-026.613.3
+535-24 -> 535-2-026.613.4
+535-26 -> 535-2-026.613.6
+535-28 -> 535-2-026.613.8
+535-201 -> 535-2-026.613.01
+535-202 -> 535-2-026.613.02
+535-203 -> 535-2-026.613.03
+535-204 -> 535-2-026.613.04
+535-211 -> 535-2-026.613.11
+535-211.4 -> 535-2-026.613.114
+535-215 -> 535-2-026.613.15
+535-217 -> 535-2-026.613.17
+535-217.4 -> 535-2-026.613.174
+535-221 -> 535-2-026.613.21
+535-221.5 -> 535-2-026.613.215
+535-224 -> 535-2-026.613.24
+535-224.5 -> 535-2-026.613.245
+535-227 -> 535-2-026.613.27
+535-231 -> 535-2-026.613.31
+535-233 -> 535-2-026.613.33
+535-233.4 -> 535-2-026.613.334
+535-233.5 -> 535-2-026.613.335
+535-236 -> 535-2-026.613.36
+535-236.6 -> 535-2-026.613.366
+535-238 -> 535-2-026.613.38
+535-241 -> 535-2-026.613.41
+535-243 -> 535-2-026.613.43
+535-247 -> 535-2-026.613.47
+535-255 -> 535-2-026.613.55
+535-261 -> 535-2-026.613.61
+535-261.2 -> 535-2-026.613.612
+535-263 -> 535-2-026.613.63
+535-263.4 -> 535-2-026.613.634
+535-275 -> 535-2-026.613.75
+535-281 -> 535-2-026.613.81
+535-281.4 -> 535-2-026.613.814
+535-282 -> 535-2-026.613.82
+535-283 -> 535-2-026.613.83
+535-285 -> 535-2-026.613.85
+535-287 -> 535-2-026.613.87
+543.087.9 -> 543.068.2
+543.087.9 -> 543.08
+546.152 -> 564.152
+561.5 -> 561.5/.9
+561.26/.27 -> 582.261/.279
+561.31 -> 561.32
+561.31 -> 561.37/.39
+561.31 -> 561.42/.47
+561.35 -> 561.37/.39
+561.35/.99 -> 582.361/.99
+561.37 -> 561.382
+561.37/.39 -> 582.37/.39
+561.42/.47 -> 582.42/.47
+561.45 -> 582.45
+561.52 -> 582.52
+561.52/.59 -> 561.52
+561.61 -> 582.61
+561.263 -> 582.263
+561.273 -> 582.273
+561.279 -> 582.279
+561.374 -> 582.374
+561.391 -> 582.391
+561.394 -> 582.394
+561.521 -> 582.521
+561.536 -> 582.536
+561.542 -> 582.542
+561.548 -> 582.548
+561.599 -> 582.599
+561.999 -> 582.999
+563.3 -> 593.3
+563.9 -> 593.9
+563.73 -> 593.73
+563.93 -> 593.93
+563.94 -> 593.94
+563.95 -> 593.95
+563.96 -> 593.96
+563.719 -> 593.719
+564.6 -> 594.6
+564.7 -> 594.7
+564.8 -> 594.8
+564.9 -> 566.2
+564.14/.17 -> 594.14/.17
+564.18/.19 -> 594.18/.19
+564.51 -> 594.51
+564.55 -> 594.55
+564.141 -> 594.141
+564.152 -> 594.14/.17
+564.581 -> 594.581
+565.39 -> 595.39
+565.391 -> 595.39
+565.392 -> 595.392
+565.393 -> 595.39
+566 -> 567/569
+566.61 -> 596.61
+566.611 -> 596.611
+567 -> 567.2/.5
+567.4 -> 567.411
+567.21 -> 567.2
+567.23 -> 567.2
+567.25 -> 567.2
+567.27 -> 567.2
+567.31 -> 567.3
+567.43 -> 567.4/.5
+567.46 -> 567.413.1
+567.48 -> 567.411
+567.99 -> 567.6
+567.211 -> 567.2
+567.411 -> 567.4/.5
+567.413 -> 567.4/.5
+567.413.1 -> 567.4/.5
+567.511 -> 567.5
+568.12 -> 568.1
+568.13 -> 568.1
+568.14 -> 568.1
+568.15 -> 568.1
+568.16 -> 568.1
+568.17 -> 568.1
+568.18 -> 568.1
+568.19 -> 568.1
+568.23 -> 568.2
+568.24 -> 568.2
+568.25 -> 568.2
+568.26 -> 568.2
+568.27 -> 568.27/.278
+568.27/.278 -> 568.2
+568.28/.29 -> 568.2
+568.29 -> 568.211
+568.55 -> 568.221
+568.56 -> 568.215
+568.111 -> 568.12
+568.112 -> 568.1
+568.112.1 -> 568.112.11
+568.112.3 -> 568.112.13
+568.112.4 -> 568.112.14
+568.112.6 -> 568.112.16
+568.112.7 -> 568.112.17
+568.112.8 -> 568.112.18
+568.112.9 -> 568.112.19
+568.112.11 -> 568.1
+568.112.13 -> 568.1
+568.112.14 -> 568.1
+568.112.16 -> 568.1
+568.112.17 -> 568.1
+568.112.18 -> 568.1
+568.112.19 -> 568.1
+568.112.21 -> 568.1
+568.112.23 -> 568.1
+568.112.27 -> 568.1
+568.112.31 -> 568.1
+568.112.32 -> 568.1
+568.112.33 -> 568.1
+568.112.34 -> 568.1
+568.112/.113 -> 568.112
+568.113.1 -> 568.112.31
+568.113.2 -> 568.112.32
+568.113.3 -> 568.112.33
+568.113.4 -> 568.112.34
+568.113.5 -> 568.112.21
+568.113.6 -> 568.112.23
+568.113.7 -> 568.112.27
+568.114 -> 568.1
+568.115 -> 568.1
+568.163 -> 568.1
+568.164 -> 568.1
+568.165 -> 568.1
+568.211 -> 568.2
+568.215 -> 568.2
+568.221 -> 568.2
+568.221.1 -> 568.2
+568.221.2 -> 568.2
+568.221.7 -> 568.2
+568.279.2 -> 568.2
+568.279.25 -> 568.2
+569.22 -> 569.2
+569.22/.23 -> 569.2
+569.22/.24 -> 569.22/.23
+569.23 -> 569.2
+569.23/.24 -> 569.23
+569.32 -> 569.3/.8
+569.35/.37 -> 569.35/.38
+569.35/.38 -> 569.3/.8
+569.61 -> 569.61/.73
+569.62 -> 569.61/.73
+569.63 -> 569.61/.73
+569.64 -> 569.61/.73
+569.65 -> 569.61/.73
+569.66 -> 569.61/.73
+569.67 -> 569.61/.73
+569.71 -> 569.61/.73
+569.72 -> 569.61/.73
+569.73 -> 569.61/.73
+569.74 -> 569
+569.312 -> 569.3/.8
+569.722 -> 569.61/.73
+569.723 -> 569.61/.73
+569.731 -> 569.61/.73
+569.732 -> 569.61/.73
+569.733 -> 569.61/.73
+569.734/.736 -> 569.735
+569.735 -> 569.61/.73
+582.2/.3 -> 582.26/.27
+582.3/.99 -> 582.32/.998
+582.21 -> 582.26/.27
+582.22 -> 582.26/.27
+582.26 -> 582.26/.27
+582.26/.27 -> 582.261/.279
+582.35 -> 582.37/.39
+582.35/.99 -> 582.361/.99
+582.52/.59 -> 582.52
+582.53 -> 582.536.31
+582.55/.56 -> 582.542
+582.58 -> 582.548
+582.65 -> 582.674
+582.69 -> 582.687.31
+582.71 -> 582.711
+582.74 -> 582.682.3
+582.75 -> 582.751
+582.76/.77 -> 582.746
+582.78 -> 582.782
+582.85 -> 582.661.56
+582.86 -> 582.776
+582.89 -> 582.794
+582.92 -> 582.687
+582.96 -> 582.933
+582.97 -> 582.936
+582.98 -> 582.681.71
+582.99 -> 582.998
+582.251 -> 582.26/.27
+582.261.5 -> 561.261
+582.262 -> 582.263
+582.264 -> 582.263.2
+582.265 -> 582.263
+582.266 -> 582.263
+582.267 -> 582.263
+582.271 -> 582.263.3
+582.274 -> 582.273
+582.275 -> 582.273
+582.282.19 -> 582.282.31
+582.290 -> 582.26/.27
+582.344 -> 582.325.11
+582.344.9 -> 582.325.21
+582.344.62 -> 582.325.27
+582.345.1 -> 582.325.23
+582.346 -> 582.325.25
+582.347 -> 582.325.1
+582.382.4 -> 582.383.1
+582.382.8 -> 582.383.2
+582.394.72 -> 582.394.7
+582.522 -> 582.521.3
+582.539 -> 582.536.21
+582.541 -> 582.536.41
+582.545 -> 582.521.11
+582.546 -> 582.521.21
+582.547 -> 582.521.4
+582.547.1 -> 582.521.41
+582.547.2 -> 582.521.43
+582.551 -> 582.542.4
+582.553 -> 582.542
+582.558 -> 582.542.31
+582.561 -> 582.548.1
+582.564 -> 582.548.11
+582.565 -> 582.542.2
+582.566 -> 582.574.4
+582.571 -> 582.542.51
+582.572.42 -> 582.573.21
+582.572.43 -> 582.573.11
+582.572.222 -> 582.572.6
+582.572.224 -> 582.573.41
+582.572.225 -> 582.573.16
+582.572.226 -> 582.572.8
+582.572.227 -> 582.573.81
+582.572.228 -> 582.573.68
+582.572.232 -> 582.573.36
+582.579 -> 582.572
+582.579.2 -> 582.572.7
+582.582 -> 582.548.21
+582.583 -> 582.548.27
+582.584 -> 582.548.25
+582.585 -> 582.548.29
+582.592 -> 582.572.2
+582.594.2 -> 582.594
+582.594.4 -> 582.594
+582.594.6 -> 582.594
+582.623 -> 582.681.81
+582.624 -> 582.788.2
+582.626 -> 582.711.712
+582.627 -> 582.746
+582.631 -> 582.746.66
+582.635.4 -> 582.636
+582.635.34 -> 582.635.3
+582.637 -> 582.721
+582.651 -> 582.674
+582.662 -> 582.661.15
+582.663 -> 582.661.21
+582.664 -> 582.661.26
+582.664.1 -> 582.661.31
+582.664.3 -> 582.661.26
+582.664.8 -> 582.661.36
+582.666 -> 582.661.41
+582.667 -> 582.661.46
+582.669 -> 582.661.51
+582.672.1 -> 582.643.1
+582.672.2 -> 582.643.2
+582.692 -> 582.686.2
+582.693 -> 582.686.3
+582.715 -> 582.711.16
+582.716 -> 582.711.21
+582.717 -> 582.711.11
+582.717 -> 582.711.26
+582.717.4 -> 582.711.26
+582.717.7 -> 582.711.31
+582.718 -> 582.711.36
+582.719 -> 582.711.41
+582.722 -> 582.711.51
+582.723 -> 582.638.16
+582.731 -> 582.711.71
+582.732 -> 582.638.26
+582.733 -> 582.711.61
+582.734 -> 582.711.71
+582.734.2 -> 582.711.711
+582.734.3 -> 582.711.714
+582.734.4 -> 582.711.712
+582.734.6 -> 582.711.713
+582.751.4 -> 582.741
+582.751.6 -> 582.741
+582.751.7 -> 582.746.11
+582.751.8 -> 582.746.16
+582.751.9 -> 582.746.21
+582.752.1 -> 582.746.26
+582.752.3 -> 582.746.41
+582.754 -> 582.755.1
+582.756 -> 582.766.3
+582.757 -> 582.682.1
+582.759 -> 582.913
+582.761 -> 582.682.2
+582.762 -> 582.688.1
+582.763 -> 582.675.2
+582.765 -> 582.746.66
+582.771 -> 582.766.2
+582.772 -> 582.746
+582.772.2 -> 582.746.51
+582.772.3 -> 582.746.56
+582.772.4 -> 582.746.46
+582.773 -> 582.677.3
+582.774 -> 582.746.61
+582.775 -> 582.661.11
+582.783 -> 582.782.2
+582.791 -> 582.681.76
+582.793 -> 582.685.3
+582.793 -> 582.685.4
+582.793 -> 582.685.5
+582.795 -> 582.685.4
+582.797 -> 582.685.3
+582.798 -> 582.685.5
+582.799 -> 582.687.11
+582.819 -> 582.687.16
+582.823 -> 582.687.21
+582.824 -> 582.684.1
+582.831 -> 582.681.11
+582.831 -> 582.684.2
+582.835 -> 582.681.16
+582.842.1 -> 582.677.4
+582.842.2 -> 582.681.26
+582.842.3 -> 582.681.31
+582.842.4 -> 582.681.36
+582.842.7 -> 582.681.41
+582.843 -> 582.681.46
+582.844 -> 582.681.51
+582.845 -> 582.681.56
+582.846 -> 582.681.61
+582.847 -> 582.681.66
+582.852 -> 582.661.56
+582.852.2 -> 582.661.56
+582.852.4 -> 582.661.56
+582.862 -> 582.766.6
+582.865 -> 582.682.4
+582.866 -> 582.724.1
+582.871 -> 582.776.1
+582.872 -> 582.776.1
+582.874 -> 582.776.1
+582.876 -> 582.776.1
+582.877 -> 582.687
+582.878 -> 582.786
+582.883 -> 582.776.2
+582.883.2 -> 582.776.2
+582.883.4 -> 582.776.2
+582.884 -> 582.776.4
+582.885 -> 582.776.5
+582.886 -> 582.776.6
+582.887 -> 582.792.1
+582.888 -> 582.913
+582.892 -> 582.794.2
+582.893 -> 582.794.1
+582.893.6 -> 582.794.1
+582.894 -> 582.788.1
+582.911 -> 582.687
+582.912.7 -> 582.688.2
+582.918 -> 582.689
+582.918.3 -> 582.689.2
+582.931 -> 582.916.16
+582.931.4 -> 582.916.16
+582.931.6 -> 582.916.26
+582.935 -> 582.916.11
+582.935 -> 582.923.2
+582.935 -> 582.923.3
+582.936.4 -> 582.998.5
+582.937 -> 582.923.5
+582.937.2 -> 582.923.5
+582.937.4 -> 582.923.5
+582.938 -> 582.923.6
+582.942 -> 582.926.3
+582.943 -> 582.926.4
+582.947 -> 582.929.1
+582.948 -> 582.929.2
+582.948.1 -> 582.926.5
+582.948.2 -> 582.929.2
+582.949 -> 582.929
+582.949.1 -> 582.929.3
+582.949.2 -> 582.929.4
+582.949.22 -> 582.929.4
+582.949.26 -> 582.929.4
+582.949.27 -> 582.929.4
+582.949.28 -> 582.929.4
+582.951 -> 582.926
+582.951.2 -> 582.926.1
+582.951.4 -> 582.926.2
+582.951.6 -> 582.916.21
+582.951.8 -> 582.916.31
+582.951.62 -> 582.916.21
+582.951.63 -> 582.916.21
+582.951.64 -> 582.916.21
+582.952.2 -> 582.916.36
+582.952.6 -> 582.916.26
+582.952.82 -> 582.916.61
+582.953.2 -> 582.711.66
+582.953.4 -> 582.916.46
+582.953.6 -> 582.916.41
+582.955 -> 582.916.51
+582.956 -> 582.916.56
+582.957 -> 582.929.3
+582.972 -> 582.936.1
+582.972.3 -> 582.936.1
+582.973 -> 582.971.1
+582.974 -> 582.971.2
+582.975 -> 582.971.3
+582.977 -> 582.971.4
+582.992 -> 582.998.3
+597.22 -> 596.611
+597.552.512 -> 597.552.55
+598.8 -> 598.28/.29
+598.81/.84 -> 598.282/.299
+598.97 -> 598.279.252
+598.111 -> 598.12
+598.112.1 -> 598.112.11
+598.112.4 -> 598.112.14
+598.112.6 -> 598.112.16
+598.112.8 -> 598.112.18
+598.113.5 -> 568.114
+598.113.6 -> 568.113.6
+598.113.7 -> 598.112.27
+598.121 -> 598.115
+598.122 -> 598.115
+598.123 -> 598.115.1
+598.123 -> 598.115.11
+598.123 -> 598.115.12
+598.124 -> 598.115.31
+598.125 -> 598.115
+598.126 -> 598.115.32
+598.126 -> 598.115.33
+598.133 -> 598.132.6
+598.135 -> 598.132.8
+598.416 -> 598.244.4
+598.611 -> 598.241.4
+598.619 -> 598.261.6
+598.712 -> 598.271.2
+598.914 -> 598.279.24
+599.35/.38 -> 599.362/.38
+599.55/.73 -> 599.6/.73
+599.742.11 -> 599.744.112
+599.742.22 -> 599.744.22
+599.827 -> 599.824
+639.211 -> 597.552.51
+639.218 -> 597.211
+651.546 -> 645.453
+651.548 -> 645.45.093
+651.548 -> 645.453
+725.53 -> 725.5
+725.54 -> 725.5
+725.55 -> 725.5
+725.56 -> 725.5
+725.57 -> 725.5
+725.59 -> 619
+725.573 -> 725.5
+725.578 -> 725.5
+725.712 -> 640.435
+725.718 -> 725.7
+725.751 -> 640.46
+727.94 -> 621.396.71
+821.432.4 -> 821.432.4/.5
+941.1 -> 94(411)
+941.6 -> 94(416)
+941/99 -> 94(41/99)
+942 -> 94(420)
+942.9 -> 94(429)
+959.1.04 -> 94(591).04
+966.9 -> 94(669)
+967.6 -> 94(676)
+967.81 -> 94(678.1)
+972 -> 94(72)
+"6111" -> "611.1"
+"6112" -> "611.2"
+"6131" -> "613.1"
+"6132" -> "613.2"
+"6133" -> "613.3"
+"6134" -> "613.4"
+"6135" -> "613.5"
+"6136" -> "613.6"
+"6151" -> "615.1"
+"6152" -> "615.2"
+"6153" -> "615.3"
+"6231" -> "623.1"
+"6235" -> "623.5"
+(0.0...) -> (0.02/.03)
+(1-74) -> 35.078.6
+(444.4) -> (449.6)
+(448.2) -> (449.7)
+(470.54/.56+.58) -> (470.54/.56+470.58)
+(624.48) -> (634.472)
+(673.11) -> (673.211)
+(673.13) -> (673.213)
+(673.14) -> (673.214)
+(673.15) -> (673.215)
+(673.16) -> (673.217)
+(673.17) -> (673.218)
+(673.18) -> (673.219)
+(673.19NOR) -> (673.221)
+(673.19SUL) -> (673.222)
+(673.26) -> (673.226)
+(673.27) -> (673.227)
+(673.28) -> (673.228)
+(673.29) -> (673.229)
+(673.35) -> (673.235)
+(673.36) -> (673.236)
+(673.37) -> (673.237)
+(673.38) -> (673.238)
+(673BEN) -> (673.216)
+(682.2) -> (682.13)
+(682.3) -> (682.141)
+(682.3) -> (682.62)
+(682.7) -> (682.53)
+(682.8) -> (682.41)
+(682.9) -> (682.42)
+(682.9) -> (682.43)
+(684.1) -> (684.1)
+(684.1) -> (684.2)
+(684.2) -> (684.1)
+(684.2) -> (684.7)
+(684.3) -> (684.7)
+(684.4) -> (684.4)
+(684.4) -> (684.7)
+(684.5) -> (684.7)
+(684.6) -> (684.4)
+(684.7) -> (684.55)
+(684.8) -> (684.5)
+(684.9) -> (684.6)
+(685.1) -> (685.4)
+(685.2) -> (685.7)
+(685.2) -> (685.8)
+(685.3) -> (685.3)
+(685.3) -> (685.8)
+(685.4) -> (685.1)
+(685.4) -> (685.2)
+(685.5) -> (685.1)
+(685.6) -> (685.1)
+(685.6) -> (685.3)
+(685.7) -> (685.1)
+(685.7) -> (685.5)
+(685.8) -> (685.6)
+(685.9) -> (685.7)
+(687.1) -> (687.3)
+(687.2) -> (687.1)
+(687.2) -> (687.3)
+(687.3) -> (687.3)
+(687.4) -> (685)
+(687.5) -> (687.5)
+(687.6) -> (687.1)
+(687.6) -> (687.5)
+(687.7) -> (687.5)
+(687.8) -> (687.1)
+(687.11) -> (687.35)
+(687.12) -> (687.355)
+(687.82) -> (687.112)
+(726.4) -> (726.6)
+(726QUI) -> (726.5)
+(727.3) -> (727.2)
+(729.724.81) -> (729.741.1)
+(729.882) -> (729.89)
+(835.41) -> (835.23)
+(842.1) -> (847.1)
+(852.3) -> (852.14)
+(852.4) -> (852.18)
+(852.5) -> (852.16)
+(852.6) -> (852.19)
+(852.8) -> (852.12)
+(853.2) -> (853.19)
+(853.3) -> (853.17)
+(853.4) -> (853.11)
+(853.5) -> (853.13)
+(853.6) -> (853.15)
+(854.1) -> (854.16)
+(854.3) -> (854.14)
+(854.4) -> (854.12)
+(854.6) -> (854.19)
+(854.8) -> (854.18)
+(861.95) -> (862.45)
+(871) -> (872.36)
+(872.21) -> (872.17)
+(873.1) -> (872.15)
+(873.4) -> (872.19)
+(881.11/.33) -> (881.11/.29)
+(881A/Z) -> (881.11/.29)
+(883A/Z) -> (883.1/.2)
+(892.21) -> (893.14)
+(892.23) -> (893.15)
+(892.27) -> (893.16)
+(892.41) -> (893.17)
+(=11/=8) -> (=1/=8)
+=1/=2 -> =11/=29
+=1/=8 -> =11/=87
+=1/=9 -> =11/=93

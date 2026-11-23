@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../core/app_state.dart';
 import '../core/models.dart';
 import 'udc_info_dialog.dart';
 
@@ -32,7 +34,9 @@ class UdcTreeView extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = index.rows(expanded, filter: filter, lang: lang);
     final virtual = showVirtualRows && filter.trim().isEmpty;
-    final total = rows.length + (virtual ? 2 : 0);
+    final cancelled = _cancelledMatches(context);
+    final extra = cancelled.isEmpty ? 0 : cancelled.length + 1; // section header + rows, after the classes
+    final total = rows.length + (virtual ? 2 : 0) + extra;
     if (index.isEmpty) {
       return const Center(child: Text('The UDC tree is empty.'));
     }
@@ -43,6 +47,12 @@ class UdcTreeView extends StatelessWidget {
       itemCount: total,
       itemExtent: 38,
       itemBuilder: (context, i) {
+        if (i >= total - extra) {
+          final k = i - (total - extra);
+          if (k == 0) return const _CancelledHeader();
+          final e = cancelled[k - 1];
+          return _CancelledRow(e, onTap: () => showCancelledInfo(context, e.code));
+        }
         if (virtual && i == 0) {
           return _Row(
               depth: 0, chevron: false, code: '', label: 'All items', count: null,
@@ -63,6 +73,7 @@ class UdcTreeView extends StatelessWidget {
           open: open,
           code: n.displayCode,
           label: n.label(lang),
+          including: n.includingIn(lang),
           count: showCounts && !n.isInfo ? n.count : null,
           selected: selected == n.code,
           heading: n.isHeading,
@@ -83,6 +94,78 @@ class UdcTreeView extends StatelessWidget {
       },
     );
   }
+
+  static const _maxCancelled = 50;
+
+  /// Cancelled notations (not in the current tree) matching the filter: by notation prefix, or by old label
+  /// from 3 characters. They are listed after the classes, greyed out.
+  List<CancelledEntry> _cancelledMatches(BuildContext context) {
+    final f = foldText(filter.trim());
+    if (f.isEmpty) return const [];
+    final s = context.watch<AppState>();
+    s.ensureCancelledIndex();
+    final all = s.cancelledIndex;
+    if (all == null) return const [];
+    final out = <CancelledEntry>[];
+    for (final e in all) {
+      if (foldText(e.code).startsWith(f) || (f.length >= 3 && foldText(e.label).contains(f))) {
+        out.add(e);
+        if (out.length == _maxCancelled) break;
+      }
+    }
+    return out;
+  }
+}
+
+class _CancelledHeader extends StatelessWidget {
+  const _CancelledHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 10, 0),
+      child: Text('Cancelled notations (no longer in the UDC)',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+    );
+  }
+}
+
+/// "568  [2011] Sauropsida (fossil)...  -> 56; 598", greyed out.
+class _CancelledRow extends StatelessWidget {
+  final CancelledEntry e;
+  final VoidCallback onTap;
+  const _CancelledRow(this.e, {required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 32, right: 10),
+        child: Row(children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Text(e.code,
+                style: TextStyle(
+                    fontWeight: FontWeight.w600, color: muted, decoration: TextDecoration.lineThrough)),
+          ),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: '[${e.year ?? '?'}] ${e.label}', style: TextStyle(color: muted)),
+                if (e.replacedBy.isNotEmpty)
+                  TextSpan(text: '  →  ${e.replacedBy.join('; ')}', style: TextStyle(color: muted, fontSize: 12)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 class _Row extends StatelessWidget {
@@ -91,6 +174,7 @@ class _Row extends StatelessWidget {
   final bool open;
   final String code;
   final String label;
+  final String including; // "Including ..." text, shown after a square as in UDC Online
   final int? count;
   final bool selected;
   final bool heading;
@@ -104,6 +188,7 @@ class _Row extends StatelessWidget {
     this.open = false,
     required this.code,
     required this.label,
+    this.including = '',
     required this.count,
     required this.selected,
     this.heading = false,
@@ -140,12 +225,29 @@ class _Row extends StatelessWidget {
                 child: Text(code, style: TextStyle(fontWeight: FontWeight.w600, color: cs.primary)),
               ),
             Expanded(
-              child: Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: heading
-                      ? TextStyle(fontWeight: FontWeight.w600, color: cs.onSurfaceVariant, letterSpacing: 0.3)
-                      : null),
+              child: Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: label),
+                  if (including.isNotEmpty) ...[
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Tooltip(
+                        message: 'Including',
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(Icons.crop_square, size: 12, color: cs.onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    TextSpan(text: including, style: TextStyle(color: cs.onSurfaceVariant)),
+                  ],
+                ]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: heading
+                    ? TextStyle(fontWeight: FontWeight.w600, color: cs.onSurfaceVariant, letterSpacing: 0.3)
+                    : null,
+              ),
             ),
             if (count != null && count! > 0)
               Text('$count', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),

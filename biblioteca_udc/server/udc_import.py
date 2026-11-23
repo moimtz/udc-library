@@ -7,7 +7,8 @@ headings, informative nodes and class notes). The original UDC Summary file also
 without skos:broader the parent is inferred from the notation, and siblings are sorted naturally.
 
 Per class it stores: code, parent, labels, global order, node type and the notes shown in the
-class information window (scope note, application note, including, examples, see also).
+class information window (scope note, application note, information note, including,
+examples, see also).
 """
 import argparse
 import json
@@ -20,14 +21,16 @@ from db import connect, init_db
 
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 SKOS = "http://www.w3.org/2004/02/skos/core#"
-UDC = "http://udcdata.info/udc-schema#"      # applicationNote, includingNote
-UDCX = "urn:udc:ext#"                        # order, nodeType (udc_merge.py)
+UDC = "http://udcdata.info/udc-schema#"      # applicationNote, informationNote, includingNote
+UDCX = "urn:udc:ext#"                        # order, nodeType, CancelledClass (udc_merge.py)
+RDFS = "http://www.w3.org/2000/01/rdf-schema#"
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 URI_PREFIX = "urn:udc:"
 
 # literal property -> key in the notes JSON
 NOTE_TAGS = {f"{{{SKOS}}}scopeNote": "scope", f"{{{UDC}}}applicationNote": "app",
-             f"{{{SKOS}}}note": "app", f"{{{UDC}}}includingNote": "including"}
+             f"{{{SKOS}}}note": "app", f"{{{UDC}}}informationNote": "info",
+             f"{{{UDC}}}includingNote": "including"}
 
 
 def infer_parent(code: str, known: set[str]) -> str | None:
@@ -83,6 +86,34 @@ def read_rdf(path: Path, langs: list[str]) -> dict[str, dict]:
             elif tag == f"{{{SKOS}}}example" and text and lang in langs:
                 c["examples"].setdefault(lang, []).append(split_example(text))
     return concepts
+
+
+def read_cancelled(path: Path) -> list[dict]:
+    """udcx:CancelledClass elements (cancelled classes, outside the hierarchy)."""
+    out = []
+    for el in ET.parse(path).getroot():
+        if el.tag != f"{{{UDCX}}}CancelledClass":
+            continue
+        c = {"code": None, "year": None, "ec": None, "label": None, "including": None, "replaced_by": [], "note": None}
+        for ch in el:
+            t = (ch.text or "").strip()
+            if ch.tag == f"{{{UDCX}}}cancelledNotation":
+                c["code"] = t
+            elif ch.tag == f"{{{UDCX}}}cancelledYear" and t:
+                c["year"] = int(t)
+            elif ch.tag == f"{{{UDCX}}}cancelledIn":
+                c["ec"] = t or None
+            elif ch.tag == f"{{{RDFS}}}label":
+                c["label"] = t
+            elif ch.tag == f"{{{UDC}}}includingNote":
+                c["including"] = t
+            elif ch.tag == f"{{{UDCX}}}replacedByNotation" and t:
+                c["replaced_by"].append(t)
+            elif ch.tag == f"{{{UDCX}}}replacementNote":
+                c["note"] = t or None
+        if c["code"]:
+            out.append(c)
+    return out
 
 
 def code_of(uri: str, c: dict) -> str | None:
@@ -148,14 +179,19 @@ def main() -> None:
         conn.execute("INSERT INTO udc_nodes(code,parent,labels,ord,node_type,notes) VALUES (?,?,?,?,?,?)",
                      (code, n["parent"], json.dumps(n["labels"], ensure_ascii=False), i, n["type"],
                       json.dumps(n["notes"], ensure_ascii=False) if n["notes"] else None))
+    cancelled = read_cancelled(args.file)
+    conn.execute("DELETE FROM udc_cancelled")
+    conn.executemany("INSERT INTO udc_cancelled(code,year,ec,label,including,replaced_by,note) VALUES (?,?,?,?,?,?,?)",
+                     [(c["code"], c["year"], c["ec"], c["label"], c["including"],
+                       json.dumps(c["replaced_by"], ensure_ascii=False), c["note"]) for c in cancelled])
     conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES ('udc_source', ?)", (args.file.name,))
     udc.rebuild_all_item_links(conn)
     conn.commit()
     conn.close()
     with_notes = sum(1 for n in nodes.values() if n["notes"])
     info = sum(1 for n in nodes.values() if n["type"] == "info")
-    print(f"Imported {len(ordered)} UDC classes ({', '.join(langs)}); {with_notes} with notes, {info} informative. "
-          "Existing items were re-linked to the tree.")
+    print(f"Imported {len(ordered)} UDC classes ({', '.join(langs)}); {with_notes} with notes, {info} informative; "
+          f"{len(cancelled)} cancelled classes. Existing items were re-linked to the tree.")
     if len(ordered) < len(nodes):
         print(f"Warning: {len(nodes) - len(ordered)} classes were not reachable from a root and were skipped.")
 

@@ -23,8 +23,22 @@ def _chain(tree, code):
     return [x.notation for x in tree.path(n) if x.kind == "main"] if n else []
 
 
+def _gold_without_cancelled(gm: set, tree) -> set:
+    """Cambia cada clase principal cancelada (y ya inexistente) que tenga UN solo reemplazo por las clases
+    principales de ese reemplazo. Las de varios reemplazos se dejan: no se sabe cuál corresponde."""
+    out = set()
+    for c in gm:
+        canc = tree.cancellation(c) if hasattr(tree, "cancellation") else None
+        if canc is not None and len(canc["replaced_by"]) == 1:
+            out |= set(components(canc["replaced_by"][0]).get("main", [])) or {c}
+        else:
+            out.add(c)
+    return out
+
+
 def evaluate(results: list[dict], gold: dict, tree) -> dict:
-    m = {"n": 0, "main_top1": 0, "main_top3": 0, "udc_exact_top1": 0, "nivel": {}, "aux": {}, "campos": {}}
+    m = {"n": 0, "main_top1": 0, "main_top3": 0, "udc_exact_top1": 0, "nivel": {}, "aux": {}, "campos": {},
+         "gold_cancelled": 0, "main_top1_alt": 0, "main_top3_alt": 0}
     auxk = {"lang": "lang", "form": "form", "place": "place", "time": "time"}
     for r in results:
         g = gold.get(_norm_name(r["file"]))
@@ -41,6 +55,12 @@ def evaluate(results: list[dict], gold: dict, tree) -> dict:
         hit1 = pm(sugg[0]) == gm
         m["main_top1"] += hit1
         m["main_top3"] += any(pm(s) == gm for s in sugg)
+        # gold con una notación cancelada de un único reemplazo: también vale acertar el reemplazo (se reporta aparte)
+        alt = _gold_without_cancelled(gm, tree)
+        if alt != gm:
+            m["gold_cancelled"] += 1
+        m["main_top1_alt"] += pm(sugg[0]) in (gm, alt)
+        m["main_top3_alt"] += any(pm(s) in (gm, alt) for s in sugg)
         m["udc_exact_top1"] += re.sub(r"\s", "", sugg[0]["udc"]) == re.sub(r"\s", "", g["udc"])
         # nivel de profundidad (primera clase principal)
         gl = _chain(tree, next(iter(gc.get("main", [])), ""))
@@ -78,6 +98,9 @@ def evaluate(results: list[dict], gold: dict, tree) -> dict:
     out = {"documentos_evaluados": m["n"],
            "clase_principal_top1": round(m["main_top1"] / n, 3), "clase_principal_top3": round(m["main_top3"] / n, 3),
            "notacion_completa_top1": round(m["udc_exact_top1"] / n, 3),
+           "gold_con_notaciones_canceladas": m["gold_cancelled"],
+           "clase_principal_top1_con_reemplazos": round(m["main_top1_alt"] / n, 3),
+           "clase_principal_top3_con_reemplazos": round(m["main_top3_alt"] / n, 3),
            "acierto_por_nivel": {f"nivel_{k}": f"{v[0]}/{v[1]}" for k, v in sorted(m["nivel"].items())},
            "tablas_auxiliares": {k: {"en_gold": v["gold"], "propuestas": v["pred"], "correctas": v["ok"]} for k, v in m["aux"].items()},
            "campos": {k: {"con_gold": v["gold"], "extraidos": v["pred"], "correctos": v["ok"]} for k, v in m["campos"].items()}}

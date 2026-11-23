@@ -233,6 +233,33 @@ def udc_node(code: str = Query(..., min_length=1), user=Depends(security.current
     return d
 
 
+@router.get("/udc/cancelled")
+def udc_cancelled(code: str = Query(..., min_length=1), user=Depends(security.current_user), conn=Depends(get_conn)):
+    """A cancelled notation: year, E&C issue, old label and the classes that replace it."""
+    d = udc.cancelled_detail(conn, code)
+    if not d:
+        raise HTTPException(404, "Not a cancelled UDC notation")
+    return {"code": code, "cancellations": d, "exists": conn.execute(
+        "SELECT 1 FROM udc_nodes WHERE code=?", (code,)).fetchone() is not None}
+
+
+@router.get("/udc/cancelled-index")
+def udc_cancelled_index(request: Request, user=Depends(security.current_user), conn=Depends(get_conn)):
+    """Cancelled notations that are not in the current tree, for the tree filter (loaded once by the app)."""
+    body = json.dumps({"cancelled": udc.cancelled_index(conn)}, ensure_ascii=False,
+                      separators=(",", ":")).encode("utf-8")
+    if "gzip" in request.headers.get("accept-encoding", ""):
+        return Response(gzip.compress(body, 6), media_type="application/json",
+                        headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+    return Response(body, media_type="application/json")
+
+
+@router.get("/udc/check")
+def udc_check(udc_text: str = Query(..., alias="udc"), user=Depends(security.current_user), conn=Depends(get_conn)):
+    """Warnings for a UDC string before saving: components that are cancelled notations."""
+    return {"cancelled": udc.find_cancelled(conn, udc_text)}
+
+
 # --------------------------------------------------------------------------- uploads
 @router.post("/uploads")
 def upload(file: UploadFile = File(...), user=Depends(security.require_editor), conn=Depends(get_conn)):

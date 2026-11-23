@@ -11,7 +11,7 @@ import numpy as np
 
 import config
 
-FEATURES = ["sim", "path", "parent", "depth", "knn", "flat", "beam"]
+FEATURES = ["sim", "path", "parent", "depth", "knn", "flat", "beam", "see_also"]
 
 
 class Feedback:
@@ -62,7 +62,7 @@ class Feedback:
             if not any(c["code"] in confirmed for c in cands):
                 continue  # sin positivo entre los candidatos: no aporta al reranker (sí al kNN)
             for c in cands:
-                X.append([c["feats"][f] for f in FEATURES])
+                X.append([c["feats"].get(f, 0.0) for f in FEATURES])  # confirmaciones antiguas: sin "see_also"
                 y.append(1 if c["code"] in confirmed else 0)
         return np.array(X, dtype=float), np.array(y, dtype=int)
 

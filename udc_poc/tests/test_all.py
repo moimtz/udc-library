@@ -153,6 +153,75 @@ class TestClassify(unittest.TestCase):
         self.assertTrue(all(not self.tree.is_related(self.tree.get(a["main"][0]["code"]), self.tree.get(b["main"][0]["code"]))
                             for i, a in enumerate(r["suggestions"]) for b in r["suggestions"][i + 1:]))
 
+    def test_official_aux_type(self):
+        """udcx:auxType (UDC Online) decide entre principal y especial; sin la marca manda la notación."""
+        extra = [("004.052", "Fault tolerance", "004"), ("53-1", "Hypothetical special-looking class", "53")]
+        plain, marked = TMP / "aux_plain.rdf", TMP / "aux_marked.rdf"
+        plain.write_text(rdf_xml(extra), encoding="utf-8")
+        marked.write_text(rdf_xml(extra, aux={"004.052": "special", "-05": "common"}), encoding="utf-8")
+        t0, t1 = Tree.load(plain), Tree.load(marked)
+        self.assertFalse(t0.official_aux)
+        self.assertEqual((t0.get("004.052").kind, t0.get("53-1").kind), ("main", "special"))
+        self.assertTrue(t1.official_aux)
+        self.assertEqual((t1.get("004.052").kind, t1.get("53-1").kind), ("special", "main"))
+        self.assertEqual(t1.get("-05").kind, "common")      # las tablas comunes conservan su tipo fino
+        self.assertEqual(t1.get("(460)").kind, "place")
+
+    def test_see_also_links(self):
+        t = self.tree
+        self.assertEqual([n.notation for n in t.see_also(t.get("903.26"))], ["2-533"])
+        self.assertEqual([n.notation for n in t.see_also(t.get("2-533"))], ["903.26"])   # sentido inverso
+        self.assertEqual([n.notation for n in t.see_also(t.get("681.3"))], ["004"])
+        self.assertEqual(t.get("2-533").kind, "special")
+        self.assertEqual(t.stats()["con_see_also"], 4)
+
+    def test_see_also_candidates(self):
+        """Con un haz estrecho, 681.3 (otra rama) solo entra como candidata por el "See also" de 004."""
+        views = {"front": "Computer science and technology. Computing. Data processing", "toc": "", "body": "", "tail": ""}
+        old = (config.K_FLAT, config.BEAM_WIDTH, config.SEE_ALSO_FROM)
+        try:
+            config.K_FLAT, config.BEAM_WIDTH = 1, 1
+            config.SEE_ALSO_FROM = 0
+            r0 = self.clf().suggest(views, {})
+            self.assertNotIn("681.3", [c["code"] for c in r0["_candidates"]])
+            config.SEE_ALSO_FROM = 10
+            r1 = self.clf().suggest(views, {})
+            cand = {c["code"]: c["feats"] for c in r1["_candidates"]}
+            self.assertIn("681.3", cand)
+            self.assertEqual(cand["681.3"]["see_also"], 1.0)
+            self.assertEqual(cand["004"]["see_also"], 0.0)
+            s = r1["suggestions"][0]
+            self.assertEqual(s["main"][0]["code"], "004")            # no desplaza a la principal
+            self.assertEqual([x["code"] for x in s["ver_tambien"]], ["681.3"])
+            self.assertIsNone(s["explain"]["via_see_also"])
+            alt = [x for x in r1["suggestions"] if x["main"][0]["code"] == "681.3"]
+            if alt:
+                self.assertTrue(alt[0]["explain"]["via_see_also"].startswith("004 "))
+        finally:
+            config.K_FLAT, config.BEAM_WIDTH, config.SEE_ALSO_FROM = old
+
+    def test_see_also_list_includes_aux(self):
+        """Un auxiliar especial enlazado (2-533) no compite como candidato, pero sí se muestra en ver_tambien."""
+        c = self.clf()
+        t = self.tree
+        sim_of = lambda n: 0.5
+        self.assertEqual([x["code"] for x in c._see_also_list(t.get("903.26"), sim_of)], ["2-533"])
+        self.assertEqual(c._see_also_candidates({t.get("903.26").uri}, sim_of), {})
+        via = c._see_also_candidates({t.get("004").uri}, sim_of)
+        self.assertEqual([t.nodes[u].notation for u in via], ["681.3"])
+
+    def test_cancelled(self):
+        t = self.tree
+        self.assertIsNone(t.get("568.1"))                       # no es un nodo del árbol
+        self.assertEqual(t.cancellation("568.1")["replaced_by"], ["53"])
+        self.assertIsNone(t.cancellation("94"))                 # reutilizada: hoy es una clase válida
+        self.assertEqual(t.stats()["notaciones_canceladas"], 3)
+        issues = validate("568.1", t)
+        self.assertTrue(any(lv == "error" and "cancelada" in msg and "53" in msg for lv, msg in issues), issues)
+        issues = validate("94(1-73)", t)
+        self.assertTrue(any(lv == "warning" and "(1-73)" in msg and "cancelada" in msg for lv, msg in issues), issues)
+        self.assertEqual(validate("94", t), [])
+
     def test_example_nodes(self):
         t = self.tree
         host = t.get("330.322")
@@ -212,6 +281,15 @@ class TestClassify(unittest.TestCase):
         r = self.clf(feedback=fb, reranker=rr).suggest({"front": "algebra theorem proof mathematics", "toc": "", "body": "", "tail": ""}, {})
         self.assertEqual(r["mode"], "reranker"); self.assertEqual(r["suggestions"][0]["main"][0]["code"], "51")
         self.assertGreater(r["neighbors_used"], 0)
+
+    def test_evaluate_cancelled_gold(self):
+        """Gold con una clase cancelada de un solo reemplazo: acertar el reemplazo cuenta en las métricas aparte."""
+        res = [{"file": "c.pdf", "fields": {}, "item_type": {"value": "book"},
+                "classification": {"suggestions": [{"udc": "53"}]}}]
+        m = evaluate(res, {"c.pdf": {"file": "c.pdf", "udc": "568.1"}}, self.tree)
+        self.assertEqual(m["clase_principal_top1"], 0.0)
+        self.assertEqual(m["clase_principal_top1_con_reemplazos"], 1.0)
+        self.assertEqual(m["gold_con_notaciones_canceladas"], 1)
 
     def test_evaluate(self):
         r = self.clf().suggest({"front": "history of Spain revolutions", "toc": "", "body": "", "tail": ""}, {"lang": ("es", .9), "item_type": "book"})

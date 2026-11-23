@@ -27,6 +27,9 @@ class AppState extends ChangeNotifier {
   // server data
   SchemaInfo schema = SchemaInfo.empty();
   UdcIndex udc = UdcIndex.empty();
+  // Cancelled notations not in the current tree; loaded the first time the tree is filtered.
+  List<CancelledEntry>? cancelledIndex;
+  bool _loadingCancelled = false;
   Map<String, dynamic>? stats;
   final Set<String> expanded = {};
 
@@ -128,6 +131,7 @@ class AppState extends ChangeNotifier {
     user = null;
     results = [];
     udc = UdcIndex.empty();
+    cancelledIndex = null;
     udcScope = null;
     searchController.clear();
   }
@@ -140,6 +144,16 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
     offline = false;
     await runQuery();
+  }
+
+  /// Loads the cancelled-notation index once (used by the tree filter). Fails silently when offline.
+  void ensureCancelledIndex() {
+    if (cancelledIndex != null || _loadingCancelled || offline) return;
+    _loadingCancelled = true;
+    api.udcCancelledIndex().then((v) {
+      cancelledIndex = v;
+      notifyListeners();
+    }).catchError((_) {}).whenComplete(() => _loadingCancelled = false);
   }
 
   Future<void> refreshAfterChange() async {

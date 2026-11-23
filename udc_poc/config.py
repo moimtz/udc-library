@@ -40,10 +40,15 @@ TESSDATA_DIR = None         # None = autodetección; si falla: r"C:\Program File
 VIEW_WEIGHTS = {"front": 0.45, "toc": 0.20, "body": 0.25, "tail": 0.10}
 K_FLAT = 40                 # candidatos por búsqueda plana
 BEAM_WIDTH = 5              # ramas abiertas en la búsqueda en haz
-MAX_DEPTH = 12              # el árbol completo + nodos de ejemplo es más profundo que el Summary
+MAX_DEPTH = 22              # profundidad máxima del árbol (21, en 598.192.162) + 1; el bucle termina antes si no hay hijos
 # Un nodo de ejemplo (origin='example') solo se propone si su similitud supera a la de su nodo
 # anfitrión por al menos este margen; si no, se propone el anfitrión. Calibrar en la Fase 2.
 EXAMPLE_MARGIN = 0.0
+# "See also" (skos:related, en ambos sentidos): las SEE_ALSO_FROM mejores candidatas aportan sus clases enlazadas
+# (solo de la tabla principal) como candidatas nuevas; compiten con la misma fórmula y el reranker recibe la marca
+# "see_also". Cada sugerencia lista hasta SEE_ALSO_MAX enlaces (cualquier tabla) en "ver_tambien". 0 = desactivado.
+SEE_ALSO_FROM = 10
+SEE_ALSO_MAX = 5
 # Pesos iniciales (antes de que haya confirmaciones suficientes para entrenar el reranker).
 DEFAULT_WEIGHTS = {"sim": 1.0, "path": 0.5, "knn": 0.6, "depth": 0.02}
 SOFTMAX_TEMP = 0.08         # convierte puntuaciones en "confianza" relativa

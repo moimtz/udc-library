@@ -42,14 +42,15 @@ Restricciones generales: todo local, gratuito y sin claves de API. Solo son opci
   - `field_defs` y `item_types`: tipos y campos ampliables en runtime por el admin.
   - `items`: citekey, item_type, title, year, language, udc (cadena completa, ej. `004.8:61`), creators (JSON), data (JSON con el resto de campos), filename, sha256, size, pages, cover_page, added_at, modified_at, added_by, deleted_at (papelera).
   - `item_udc` (item_id, code, node_code): relación muchos a muchos; un libro puede estar en varias ramas. `node_code` es el prefijo más largo de `code` que existe en `udc_nodes`.
-  - `udc_nodes` (code, parent, labels JSON por idioma, ord, node_type `heading`/`info`, notes JSON con scope/app/including/examples/related) y `meta`. Se llena con `udc_import.py` desde `udcs-skos.rdf` (árbol completo, ~72 000 clases).
+  - `udc_nodes` (code, parent, labels JSON por idioma, ord, node_type `heading`/`info`, notes JSON con scope/app/info/including/examples/related), `udc_cancelled` (clases canceladas: code, year, ec, label, including, replaced_by JSON, note) y `meta`. Se llena con `udc_import.py` desde `udcs-skos.rdf` (árbol completo, ~72 000 clases).
 - **Auth:** PBKDF2-SHA256 y sesiones por token (60 días). Biblioteca **compartida** entre todos los usuarios. Roles: admin (gestiona usuarios y tipos), editor (añade, edita, elimina), viewer (busca y abre). Límite de intentos de login en memoria.
 - **API (`/api`):**
   - auth: login, logout, me.
   - users: CRUD (admin).
   - schema, types, fields, stats.
   - `udc/tree`: nodos con conteos, `type` y `has_info`, y número de "unclassified" (gzip si el cliente lo acepta).
-  - `udc/node?code=`: notas de una clase para la ventana de información (ⓘ en el árbol).
+  - `udc/node?code=`: notas de una clase para la ventana de información (ⓘ en el árbol), con `replaces`/`earlier` (canceladas).
+  - `udc/cancelled?code=`, `udc/cancelled-index`, `udc/check?udc=`: clases canceladas (detalle, índice para el filtro del árbol, aviso al guardar).
   - items: listado con búsqueda en Python (regex, acentos plegados, resaltado de coincidencias devuelto como offsets por campo), ordenado por título, autor, año o fecha de alta.
   - Alta en dos pasos: `POST /uploads` (devuelve temp_id, hash, páginas, metadatos y duplicados) y luego `POST /items` con `duplicate_action` = check, keep_both o replace.
   - autofill (DOI, ISBN, arXiv), `file`, `cover`, páginas de vista previa, papelera (restaurar y borrar definitivo; purga a los 30 días).

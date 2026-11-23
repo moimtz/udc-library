@@ -26,8 +26,8 @@ DC = "http://purl.org/dc/elements/1.1/"
 DCT = "http://purl.org/dc/terms/"
 FOAF = "http://xmlns.com/foaf/0.1/"
 OWL = "http://www.w3.org/2002/07/owl#"
-UDC = "http://udcdata.info/udc-schema#"   # applicationNote, includingNote
-UDCX = "urn:udc:ext#"                     # propiedades locales: order, nodeType
+UDC = "http://udcdata.info/udc-schema#"   # applicationNote, informationNote, includingNote
+UDCX = "urn:udc:ext#"                     # propiedades locales: order, nodeType, auxType
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 NOTATION_DT = "http://udcdata.info/UDCnotation"
 
@@ -46,8 +46,8 @@ HEADING_RE = re.compile(r"^-+$")  # encabezados '-', '--', '---', '----'
 
 # ---------------------------------------------------------------- modelo
 class Node:
-    __slots__ = ("key", "notation", "labels", "alt", "hidden", "scope", "app", "including",
-                 "examples", "related", "parent", "order", "node_type")
+    __slots__ = ("key", "notation", "labels", "alt", "hidden", "scope", "app", "info", "including",
+                 "examples", "related", "parent", "order", "node_type", "aux_type")
 
     def __init__(self, key, notation):
         self.key = key              # notación, o 'heading-N' para encabezados
@@ -57,12 +57,14 @@ class Node:
         self.hidden = {}            # lang -> [str]
         self.scope = {}             # lang -> [str]  skos:scopeNote
         self.app = {}               # lang -> [str]  udc:applicationNote
+        self.info = {}              # lang -> [str]  udc:informationNote
         self.including = {}         # lang -> [str]  udc:includingNote ("Including ...")
         self.examples = {}          # lang -> [str]  skos:example
         self.related = []           # claves
         self.parent = None          # clave del padre
         self.order = None           # posición entre hermanos (int) o None
         self.node_type = None       # 'heading', 'info' o None
+        self.aux_type = None        # 'common', 'special' o None (tabla principal); de UDC Online
 
 
 def key_to_uri(key):
@@ -87,6 +89,7 @@ def add_unique(d, lang, text):
 def read_rdf(path, keep_langs=None):
     """Devuelve (nodes, scheme_meta, stats). keep_langs=None conserva todos los idiomas."""
     root = ET.parse(path).getroot()
+    cancelled = []     # udcx:CancelledClass (clases canceladas; fuera de la jerarquía)
     raw = {}           # uri -> dict de listas
     scheme_meta = []   # (tag, attrs, text) del ConceptScheme
     ignored = {}
@@ -114,10 +117,13 @@ def read_rdf(path, keep_langs=None):
                     continue
                 scheme_meta.append((ch.tag, lang, res, text))
             continue
+        if el.tag == f"{{{UDCX}}}CancelledClass":
+            cancelled.append(read_cancelled(el))
+            continue
         if el.tag not in (f"{{{SKOS}}}Concept", f"{{{RDF}}}Description"):
             continue  # rdf:Property, etc.
         r = raw.setdefault(about, {"lits": [], "broader": [], "related": [], "notation": None,
-                                   "order": None, "type": None, "concept": False})
+                                   "order": None, "type": None, "aux": None, "concept": False})
         if el.tag == f"{{{SKOS}}}Concept":
             r["concept"] = True
         for ch in el:
@@ -135,11 +141,13 @@ def read_rdf(path, keep_langs=None):
                 r["order"] = int(text)
             elif tag == f"{{{UDCX}}}nodeType":
                 r["type"] = text
+            elif tag == f"{{{UDCX}}}auxType":
+                r["aux"] = text or None
             elif tag in (f"{{{SKOS}}}narrower", f"{{{SKOS}}}inScheme", f"{{{SKOS}}}topConceptOf"):
                 pass  # se recalculan al escribir
             elif tag in (f"{{{SKOS}}}prefLabel", f"{{{SKOS}}}altLabel", f"{{{SKOS}}}hiddenLabel",
                          f"{{{SKOS}}}scopeNote", f"{{{SKOS}}}note", f"{{{UDC}}}applicationNote",
-                         f"{{{UDC}}}includingNote", f"{{{SKOS}}}example"):
+                         f"{{{UDC}}}informationNote", f"{{{UDC}}}includingNote", f"{{{SKOS}}}example"):
                 if not text:
                     continue
                 if not lang_ok(lang):
@@ -167,6 +175,7 @@ def read_rdf(path, keep_langs=None):
         n = Node(key, None if key.startswith("heading-") else key)
         n.order = r["order"]
         n.node_type = r["type"] or ("heading" if n.notation is None else None)
+        n.aux_type = r["aux"]
         for tag, lang, text in r["lits"]:
             if tag == f"{{{SKOS}}}prefLabel":
                 n.labels.setdefault(lang, text)
@@ -178,6 +187,8 @@ def read_rdf(path, keep_langs=None):
                 add_unique(n.scope, lang, text)
             elif tag in (f"{{{SKOS}}}note", f"{{{UDC}}}applicationNote"):
                 add_unique(n.app, lang, text)
+            elif tag == f"{{{UDC}}}informationNote":
+                add_unique(n.info, lang, text)
             elif tag == f"{{{UDC}}}includingNote":
                 add_unique(n.including, lang, text)
             elif tag == f"{{{SKOS}}}example":
@@ -186,8 +197,30 @@ def read_rdf(path, keep_langs=None):
         n.parent = parents[0] if parents else None
         n.related = [uri_key[x] for x in r["related"] if x in uri_key]
         nodes[key] = n
-    stats = {"ignored_predicates": ignored, "dropped_literals_by_lang": dropped_lang}
+    stats = {"ignored_predicates": ignored, "dropped_literals_by_lang": dropped_lang, "cancelled": cancelled}
     return nodes, scheme_meta, stats
+
+
+def read_cancelled(el):
+    """udcx:CancelledClass -> (notación, dict con el formato de udc_cancelled.json)."""
+    nt, rec = None, {"year": None, "ec": "", "label": "", "replacedBy": [], "note": ""}
+    for ch in el:
+        t = (ch.text or "").strip()
+        if ch.tag == f"{{{UDCX}}}cancelledNotation":
+            nt = t
+        elif ch.tag == f"{{{UDCX}}}cancelledYear":
+            rec["year"] = int(t)
+        elif ch.tag == f"{{{UDCX}}}cancelledIn":
+            rec["ec"] = t
+        elif ch.tag == f"{{{RDFS}}}label":
+            rec["label"] = t
+        elif ch.tag == f"{{{UDC}}}includingNote":
+            rec["including"] = t
+        elif ch.tag == f"{{{UDCX}}}replacedByNotation":
+            rec["replacedBy"].append(t)
+        elif ch.tag == f"{{{UDCX}}}replacementNote":
+            rec["note"] = t
+    return nt, rec
 
 
 # ---------------------------------------------------------------- lectura TXT
@@ -298,8 +331,8 @@ def merge_labels(nodes, entries, lang, rep):
         n.labels[lang] = label
 
 
-NOTE_FIELDS = {"scopeNote": "scope", "applicationNote": "app", "includingNote": "including",
-               "example": "examples"}
+NOTE_FIELDS = {"scopeNote": "scope", "applicationNote": "app", "informationNote": "info",
+               "includingNote": "including", "example": "examples"}
 
 
 def apply_notes(nodes, notes, rep, source="extra_notes"):
@@ -319,6 +352,8 @@ def apply_notes(nodes, notes, rep, source="extra_notes"):
             n.related = list(dict.fromkeys(spec["related"]))
         if "nodeType" in spec:
             n.node_type = spec["nodeType"] or None
+        if "auxType" in spec:
+            n.aux_type = spec["auxType"] or None
         for lang, text in (spec.get("prefLabel") or {}).items():
             n.labels[lang] = text
         for jkey, attr in fields.items():
@@ -336,7 +371,7 @@ def lang_sort(langs):
     return sorted(langs, key=lambda l: (l != "en", l))
 
 
-def write_rdf(nodes, scheme_meta, out_path, rep):
+def write_rdf(nodes, scheme_meta, out_path, rep, cancelled=()):
     children = {}
     for n in nodes.values():
         if n.parent is not None and n.parent not in nodes:
@@ -391,9 +426,21 @@ def write_rdf(nodes, scheme_meta, out_path, rep):
         f.write("  </skos:ConceptScheme>\n")
         # propiedades
         props = [(UDC + "applicationNote", "applicationNote", "Instructions for number building.", SKOS + "note"),
+                 (UDC + "informationNote", "informationNote", "Background information about the class.", SKOS + "note"),
                  (UDC + "includingNote", "includingNote", "Concepts included in the class ('Including ...').", SKOS + "note"),
                  (UDCX + "order", "order", "Position of the concept among its siblings (0-based).", None),
+                 (UDCX + "auxType", "auxType", "'common' (common auxiliary) or 'special' (special auxiliary), as marked by UDC Online. No value = main table.", None),
                  (UDCX + "nodeType", "nodeType", "'heading' (grouping node without notation) or 'info' (informative node, not assignable).", None)]
+        if cancelled:
+            props += [(UDCX + "cancelledNotation", "cancelledNotation", "Notation of a cancelled UDC class.", None),
+                      (UDCX + "cancelledYear", "cancelledYear", "Year of the cancellation.", None),
+                      (UDCX + "cancelledIn", "cancelledIn", "Issue of Extensions and Corrections to the UDC where it was cancelled (e.g. E&C33).", None),
+                      (UDCX + "replacedByNotation", "replacedByNotation", "Notation that replaces the cancelled class, in the order given by UDC Online (it may not exist in this tree, e.g. a combination).", None),
+                      (UDCX + "replacementNote", "replacementNote", "Remark about the replacement (e.g. 'No replacement').", None)]
+            f.write(f'  <rdfs:Class rdf:about="{UDCX}CancelledClass">\n    <rdfs:label>CancelledClass</rdfs:label>\n'
+                    '    <rdfs:comment>A UDC class cancelled in a past edition. Not part of the hierarchy (it is not a '
+                    'skos:Concept); dct:isReplacedBy points to the replacing classes that exist in this tree.</rdfs:comment>\n'
+                    "  </rdfs:Class>\n")
         for uri, label, comment, sub in props:
             f.write(f'  <rdf:Property rdf:about="{uri}">\n    <rdfs:label>{label}</rdfs:label>\n'
                     f"    <rdfs:comment>{escape(comment)}</rdfs:comment>\n")
@@ -415,7 +462,7 @@ def write_rdf(nodes, scheme_meta, out_path, rep):
             for lang in lang_sort(n.labels):
                 f.write(lit("skos:prefLabel", lang, n.labels[lang]))
             for tag, d in (("skos:altLabel", n.alt), ("skos:hiddenLabel", n.hidden),
-                           ("skos:scopeNote", n.scope), ("udc:applicationNote", n.app),
+                           ("skos:scopeNote", n.scope), ("udc:applicationNote", n.app), ("udc:informationNote", n.info),
                            ("udc:includingNote", n.including), ("skos:example", n.examples)):
                 for lang in lang_sort(d):
                     for text in d[lang]:
@@ -427,8 +474,38 @@ def write_rdf(nodes, scheme_meta, out_path, rep):
                     rep["dangling_related"].append((n.key, r))
             if n.node_type:
                 f.write(f"    <udcx:nodeType>{escape(n.node_type)}</udcx:nodeType>\n")
+            if n.aux_type:
+                f.write(f"    <udcx:auxType>{escape(n.aux_type)}</udcx:auxType>\n")
             f.write(f'    <udcx:order rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">{n.order}</udcx:order>\n')
             f.write("  </skos:Concept>\n")
+        # clases canceladas (fuera de la jerarquía; la app y el PoC no las leen como clases)
+        used = set()
+        for nt, rec in cancelled:
+            ident = f"{nt}@{rec['year']}"
+            while ident in used:
+                ident += "+"
+            used.add(ident)
+            f.write(f"  <udcx:CancelledClass rdf:about={quoteattr('urn:udc:cancelled:' + quote(ident, safe=''))}>\n")
+            f.write(f"    <udcx:cancelledNotation>{escape(nt)}</udcx:cancelledNotation>\n")
+            if rec.get("label"):
+                f.write(lit("rdfs:label", "en", rec["label"]))
+            if rec.get("including"):
+                f.write(lit("udc:includingNote", "en", rec["including"]))
+            f.write('    <owl:deprecated rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:deprecated>\n')
+            if rec.get("year"):
+                f.write(f'    <udcx:cancelledYear rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">{rec["year"]}</udcx:cancelledYear>\n')
+            if rec.get("ec"):
+                f.write(f"    <udcx:cancelledIn>{escape(rec['ec'])}</udcx:cancelledIn>\n")
+            for t in rec.get("replacedBy", []):
+                f.write(f"    <udcx:replacedByNotation>{escape(t)}</udcx:replacedByNotation>\n")
+                if t in nodes:
+                    f.write(res("dct:isReplacedBy", t))
+                else:
+                    rep["cancelled_dangling"].append((nt, t))
+            if rec.get("note"):
+                f.write(f"    <udcx:replacementNote>{escape(rec['note'])}</udcx:replacementNote>\n")
+            f.write("  </udcx:CancelledClass>\n")
+        rep["cancelled_written"] = len(used)
         f.write("</rdf:RDF>\n")
     return len(ordered)
 
@@ -467,12 +544,19 @@ def write_report(path, rep, nodes, args, mode, total):
               f"Notas aplicadas por archivo: {rep['notes_applied']}",
               f"Notas con notación desconocida: {len(rep['notes_unknown'])}",
               f"extra_notes vacías: {rep['notes_empty']}"]
-    for label, attr in (("scopeNote", "scope"), ("applicationNote", "app"), ("includingNote", "including"),
-                        ("example", "examples")):
+    for label, attr in (("scopeNote", "scope"), ("applicationNote", "app"), ("informationNote", "info"),
+                        ("includingNote", "including"), ("example", "examples")):
         with_f = [n for n in nodes.values() if getattr(n, attr)]
         total_v = sum(len(v) for n in with_f for v in getattr(n, attr).values())
         lines.append(f"Nodos con {label}: {len(with_f)} ({total_v} textos)")
     lines.append(f"Nodos con related: {sum(1 for n in nodes.values() if n.related)}")
+    lines.append(f"Clases canceladas escritas: {rep['cancelled_written']}"
+                 + (f" (de {rep['cancelled_source']}); reemplazos que no son clases del árbol: "
+                    f"{len(rep['cancelled_dangling'])}" if rep["cancelled_written"] else ""))
+    aux = {}
+    for n in nodes.values():
+        aux[n.aux_type] = aux.get(n.aux_type, 0) + 1
+    lines.append("Tipo de auxiliar (auxType): " + ", ".join(f"{k or 'principal'}={v}" for k, v in sorted(aux.items(), key=lambda x: str(x[0]))))
 
     def section(title, items, fmt=str):
         if items:
@@ -486,6 +570,8 @@ def write_report(path, rep, nodes, args, mode, total):
     section("No existen en el RDF", rep["not_in_rdf"])
     section("Diferencias de jerarquía (RDF -> txt)", rep["hierarchy_mismatch"], arrow)
     section("related colgantes", rep["dangling_related"], lambda t: f"{t[0]} -> {t[1]}")
+    section("canceladas: reemplazo fuera del árbol (queda como texto)", rep["cancelled_dangling"],
+            lambda t: f"{t[0]} -> {t[1]}")
     section("Huérfanos", rep["orphans"])
     section("Notas con notación desconocida", rep["notes_unknown"])
     if mode == "labels":
@@ -509,6 +595,9 @@ def main(argv=None):
     ap.add_argument("--records", type=Path,
                     help="fichas de UDC Online ya interpretadas (por defecto udc_records.json junto al script, "
                          "si existe). Se aplican antes que --notes")
+    ap.add_argument("--cancelled", type=Path,
+                    help="clases canceladas (por defecto udc_cancelled.json junto al script, si existe). "
+                         "Sin el archivo se conservan las que ya trae el RDF")
     ap.add_argument("--out", type=Path, help="RDF de salida (por defecto sobrescribe --rdf con copia .bak)")
     ap.add_argument("--report", type=Path, help="informe (por defecto conversion_report.txt junto a la salida)")
     ap.add_argument("--dry-run", action="store_true", help="solo genera el informe")
@@ -522,6 +611,9 @@ def main(argv=None):
     records_path = args.records or (Path(__file__).with_name("udc_records.json"))
     if args.records and not records_path.exists():
         sys.exit(f"No existe {records_path}")
+    cancelled_path = args.cancelled or (Path(__file__).with_name("udc_cancelled.json"))
+    if args.cancelled and not cancelled_path.exists():
+        sys.exit(f"No existe {cancelled_path}")
 
     nodes, scheme_meta, stats = read_rdf(args.rdf, keep)
     try:
@@ -532,7 +624,7 @@ def main(argv=None):
     rep = {"created": 0, "parent_changes": [], "label_changes": [], "_changed": set(),
            "not_in_rdf": [], "hierarchy_mismatch": [], "labels_added": 0,
            "labels_replaced": 0, "notes_unknown": [], "notes_empty": [], "notes_applied": {},
-           "dangling_related": [],
+           "dangling_related": [], "cancelled_dangling": [], "cancelled_written": 0, "cancelled_source": "",
            "orphans": [], "stats": stats}
     if mode == "structure":
         merge_structure(nodes, entries, args.lang, args.prune, rep)
@@ -543,16 +635,24 @@ def main(argv=None):
     if notes_path.exists():
         apply_notes(nodes, json.loads(notes_path.read_text(encoding="utf-8")), rep, "extra_notes")
 
+    if cancelled_path.exists():
+        cj = json.loads(cancelled_path.read_text(encoding="utf-8"))
+        cancelled = [(nt, rec) for nt, lst in cj.items() if not nt.startswith("_") for rec in lst]
+        rep["cancelled_source"] = cancelled_path.name
+    else:
+        cancelled = [c for c in stats["cancelled"] if c[0]]
+        rep["cancelled_source"] = "RDF de entrada" if cancelled else ""
+
     report_path = args.report or out.with_name("conversion_report.txt")
     if args.dry_run:
         tmp = out.with_name(out.name + ".dryrun.tmp")
-        total = write_rdf(nodes, scheme_meta, tmp, rep)
+        total = write_rdf(nodes, scheme_meta, tmp, rep, cancelled)
         tmp.unlink()
     else:
         if out.exists() and out.resolve() == args.rdf.resolve():
             shutil.copy2(out, out.with_name(out.name + ".bak"))
         tmp = out.with_name(out.name + ".tmp")
-        total = write_rdf(nodes, scheme_meta, tmp, rep)
+        total = write_rdf(nodes, scheme_meta, tmp, rep, cancelled)
         tmp.replace(out)
     lines = write_report(report_path, rep, nodes, args, mode, total)
     cut = next((i for i, l in enumerate(lines) if l.startswith("== ")), len(lines))

@@ -61,6 +61,7 @@ espera ruido en tus etiquetas; el sistema lo aprenderá también.
 | Partituras | `SCORE_ITEM_TYPE` (por defecto `document` + nota `Tipo: partitura` en `extra`) |
 | Umbrales y pesos | `LOW_CONFIDENCE`, `MIN_SIM`, `AUX_MIN_SIM`, `DEFAULT_WEIGHTS`, `VIEW_WEIGHTS`, … |
 | Cuándo un ejemplo de combinación gana a su clase | `EXAMPLE_MARGIN` (ver §4.1) |
+| Clases alternativas por "See also" | `SEE_ALSO_FROM`, `SEE_ALSO_MAX` (ver §4.2) |
 | Orden de auxiliares en la notación | `AUX_ORDER` |
 
 Para añadir un tipo nuevo (p. ej. `computerProgram`): agrégalo a `ZOTERO_ITEM_TYPES` y, si quieres detectarlo, a `DOCTYPE_RULES`.
@@ -92,9 +93,36 @@ El RDF guarda los ejemplos de cada clase como `skos:example` (`330.322.014.3    
 - Las combinaciones con `:` `+` `(` `=` (p. ej. `17:7`) no se vuelven nodos: se añaden al texto de su clase (`e.g. …`).
 - Un ejemplo solo se propone si su similitud supera a la de su clase en `EXAMPLE_MARGIN` (0 por defecto; súbelo si
   ves ejemplos demasiado específicos). `retroceder_a` incluye siempre la clase.
-- `udc:includingNote` («Including …») también entra en el texto del nodo.
+- `udc:includingNote` («Including …») y `udc:informationNote` también entran en el texto del nodo.
+- Si el RDF trae `udcx:auxType` (marca oficial de UDC Online), decide si una clase es principal o auxiliar especial; sin
+  ella se deduce de la notación. Con el árbol actual corrige ~1 100 auxiliares especiales que parecían principales
+  (`661.187.047`) y ~170 principales que parecían especiales (`621.039.5…`). Dentro de las tablas comunes se conserva
+  el tipo fino (`place`, `lang`, `time`…). `tree` lo indica en `marca_auxiliar_oficial`.
 - Límite: solo llega a las combinaciones que la UDC trae como ejemplo; armar combinaciones nuevas es tarea de la Fase 2.
 - Al cambiar notas o ejemplos en el RDF, el índice se regenera solo (la huella incluye el texto embebido).
+
+### 4.2 «See also» (clases alternativas de otra rama)
+Las referencias ⇨ de UDC Online (`skos:related`, p. ej. `903.26 Objects of worship` ⇨ `2-533 Object of worship`)
+enlazan clases de ramas distintas. El PoC las usa en **ambos sentidos** (UDC Online a veces solo las pone en uno):
+
+- **Candidatas nuevas:** las `SEE_ALSO_FROM` (10) mejores candidatas aportan sus clases enlazadas, a un solo salto.
+  Compiten con la misma fórmula que las demás; sirve para llegar a una rama que la búsqueda en haz no exploró.
+  Solo entran clases de la tabla principal (la puntuación usa la cadena de clases principales). En `explain.via_see_also`
+  se indica desde qué clase llegó.
+- **Alternativas visibles:** cada sugerencia trae `ver_tambien` (hasta `SEE_ALSO_MAX`, de cualquier tabla, también
+  auxiliares como `2-533`) con su similitud con el documento; `run` y `review` muestran las 3 primeras.
+- **Reranker:** recibe la marca `see_also` (1 si la clase está enlazada desde una de las mejores candidatas) y aprende
+  de tus confirmaciones cuánto vale. Las confirmaciones antiguas valen igual (sin la marca, cuenta como 0); un
+  `reranker.pkl` entrenado antes de este cambio se descarta y se reentrena con `python -m udcpoc train`.
+- Pendiente para la calibración: preferir una clase enlazada como segundo tema (`A:B`) en casi-empates.
+- `SEE_ALSO_FROM = 0` lo desactiva.
+
+### 4.3 Clases canceladas
+El RDF trae las clases canceladas de UDC Online (`udcx:CancelledClass`: año, E&C, etiqueta antigua y reemplazos). No son nodos: nunca se proponen.
+
+- **Validador:** si un componente no existe porque fue cancelado, el mensaje lo dice y da los reemplazos (`568.1 fue cancelada en la UDC [2011, E&C33] (Reptilia. Fossil reptiles); se reemplaza por: 56; 598.1`). Mismo nivel que antes: error en la clase principal, aviso en auxiliares. Las notaciones reutilizadas (`94`) son válidas.
+- **Evaluación:** si tu gold usa una clase principal cancelada con **un solo** reemplazo, acertar ese reemplazo cuenta en `clase_principal_top1_con_reemplazos` / `top3_con_reemplazos` (las métricas de siempre no cambian); `gold_con_notaciones_canceladas` dice cuántos documentos lo usan.
+- Pendiente (calibración): detectar la notación impresa en el PDF y añadir la etiqueta antigua al texto del reemplazo.
 
 ### Métricas de `evaluate`
 - `clase_principal_top1/top3`: la(s) clase(s) principal(es) coinciden con tu gold en la sugerencia 1 / en alguna de las 3.
@@ -116,7 +144,7 @@ Se activa con `--llm`. Decisión en la Fase 2 mediante ablación (con/sin LLM).
 ## 7. Qué se probó y qué no (importante)
 Probado aquí con un UDC **sintético** de ~30 nodos, un embedder falso y un `fitz` simulado: lectura del árbol, jerarquía
 (incluida inferencia por prefijo), validador, composición, tablas auxiliares, patentes, nombres, títulos por maquetación,
-feedback + reranker, `run`, `review`, `evaluate` (17 pruebas: `python -m unittest discover -s tests -t .`).
+feedback + reranker, `run`, `review`, `evaluate` (23 pruebas: `python -m unittest discover -s tests -t .`).
 
 **No probado (no tuve red, ni tus archivos):** el RDF real con `rdflib`, PyMuPDF real, `bge-m3`, OCR, GLiNER,
 `--verify` y `--llm`. Es de esperar que la primera ejecución real requiera ajustes, sobre todo:
