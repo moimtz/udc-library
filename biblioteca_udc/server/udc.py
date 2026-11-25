@@ -1,31 +1,8 @@
-"""UDC helpers: notation parsing, tree walking, and item <-> node links."""
+"""UDC helpers: tree walking, item <-> node links, cancelled classes."""
 import json
 import re
 
-
-def extract_codes(udc: str) -> list[str]:
-    """Pull main-table numbers out of a (possibly compound) UDC string.
-
-    '004.8:61' -> ['004.8', '61'];  '54/55' -> ['54', '55'];  '94(460)"19"' -> ['94'].
-    Auxiliary signs such as (460) or =134.2 are kept in the stored string but do
-    not place the item in the tree.
-    """
-    codes: list[str] = []
-    for part in re.split(r"[:+/]", udc or ""):
-        m = re.match(r"\s*(\d+(?:\.\d+)*)", part)
-        if m:
-            codes.append(m.group(1))
-    return list(dict.fromkeys(codes))
-
-
-def resolve_node(code: str, known: set[str]) -> str | None:
-    """Longest prefix of `code` that exists in the Summary (deep numbers fall back to a parent)."""
-    c = code
-    while c:
-        if c in known:
-            return c
-        c = c[:-1].rstrip(".")
-    return None
+import notation
 
 
 def natural_key(code: str):
@@ -53,35 +30,38 @@ def descendants(conn, code: str) -> set[str]:
     return out
 
 
-def set_item_udc(conn, item_id: int, udc: str) -> None:
-    known = {r["code"] for r in conn.execute("SELECT code FROM udc_nodes")}
-    conn.execute("DELETE FROM item_udc WHERE item_id=?", (item_id,))
-    for code in extract_codes(udc):
-        conn.execute("INSERT OR IGNORE INTO item_udc(item_id, code, node_code) VALUES (?,?,?)",
-                     (item_id, code, resolve_node(code, known)))
+def refresh_item_nodes(conn, item_id: int, known: set[str] | None = None) -> None:
+    """Recompute item_udc_nodes (the tree nodes where the item appears) from its notations in item_udc."""
+    if known is None:
+        known = {r[0] for r in conn.execute("SELECT code FROM udc_nodes")}
+    conn.execute("DELETE FROM item_udc_nodes WHERE item_id=?", (item_id,))
+    for (notation_text,) in conn.execute("SELECT notation FROM item_udc WHERE item_id=? ORDER BY position",
+                                         (item_id,)).fetchall():
+        for code in notation.nodes_for(notation_text, known):
+            conn.execute("INSERT OR IGNORE INTO item_udc_nodes(item_id, node_code) VALUES (?,?)", (item_id, code))
 
 
 def rebuild_all_item_links(conn) -> None:
-    """Call after importing a new UDC file."""
-    for r in conn.execute("SELECT id, udc FROM items").fetchall():
-        set_item_udc(conn, r["id"], r["udc"])
+    """Call after importing a new UDC tree."""
+    known = {r[0] for r in conn.execute("SELECT code FROM udc_nodes")}
+    for (item_id,) in conn.execute("SELECT DISTINCT item_id FROM item_udc").fetchall():
+        refresh_item_nodes(conn, item_id, known)
 
 
 def tree_payload(conn) -> list[dict]:
     """All nodes with item counts (direct and including descendants)."""
     direct: dict[str, int] = {}
     for r in conn.execute(
-            "SELECT iu.node_code AS c, COUNT(DISTINCT iu.item_id) AS n FROM item_udc iu "
-            "JOIN items i ON i.id = iu.item_id WHERE i.deleted_at IS NULL AND iu.node_code IS NOT NULL "
-            "GROUP BY iu.node_code"):
+            "SELECT iu.node_code AS c, COUNT(DISTINCT iu.item_id) AS n FROM item_udc_nodes iu "
+            "JOIN items i ON i.id = iu.item_id WHERE i.deleted_at IS NULL GROUP BY iu.node_code"):
         direct[r["c"]] = r["n"]
     parent, children = load_parent_map(conn)
 
     # Items can sit in several branches, so count distinct items per subtree.
     item_nodes: dict[int, set[str]] = {}
     for r in conn.execute(
-            "SELECT iu.item_id AS i, iu.node_code AS c FROM item_udc iu "
-            "JOIN items it ON it.id = iu.item_id WHERE it.deleted_at IS NULL AND iu.node_code IS NOT NULL"):
+            "SELECT iu.item_id AS i, iu.node_code AS c FROM item_udc_nodes iu "
+            "JOIN items it ON it.id = iu.item_id WHERE it.deleted_at IS NULL"):
         item_nodes.setdefault(r["i"], set()).add(r["c"])
     total: dict[str, set[int]] = {}
     for item_id, nodes in item_nodes.items():

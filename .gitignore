@@ -1,7 +1,23 @@
 # --- Copyrighted books: never upload ---
-udc_poc/books/
+# (the folder's files are ignored, except the blind-review answers file)
+udc_poc/books/**
+!udc_poc/books/**/
+!udc_poc/books/gold/udc_gold.csv
 *.pdf
 desktop.ini
+
+# --- PoC: regenerable or local-only data ---
+# embedding index (~300 MB; rebuilt by `python -m udcpoc index`), reranker (retrained from feedback.db),
+# catalog answers cache, metrics, backups and old runs
+udc_poc/data/index/
+udc_poc/data/reranker.pkl
+udc_poc/data/lookup_cache.json
+udc_poc/output/metrics.json
+*_respaldo_*
+udc_poc/_anterior_*/
+
+# --- Tesseract models (tessdata_fast clone, ~600 MB) ---
+udc_poc/data/tessdata/
 
 # --- Python ---
 .venv/
@@ -23,3 +39,10 @@ build/
 .idea/
 Thumbs.db
 *.bak
+claude_prompts.md
+udc_library_context.md
+evaluate_results.txt
+pendientes*.md
+**/_anterior_*/
+**/respaldo_*/
+*_respaldo_*

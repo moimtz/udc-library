@@ -1,0 +1,1792 @@
+ZOTERO: TIPOS DE ÍTEM, CAMPOS Y CREADORES
+Referencia para rediseñar la base de datos de Biblioteca UDC (relación muchos a muchos tipo <-> campo).
+
+Fuentes
+  - Descripciones: https://www.zotero.org/support/kb/item_types_and_fields (fuente en GitHub:
+    zotero/zotero-docs, content/kb/item_types_and_fields.md; "Last updated 2026-05-18").
+  - Qué campos y creadores lleva cada tipo, su orden, sus campos base y sus etiquetas: esquema oficial
+    zotero/zotero-schema, schema.json, versión 45. La página web NO trae esa relación; solo agrupa
+    los campos por categorías.
+  - Generado el 2026-11-23.
+
+Leyenda
+  nombreInterno "Etiqueta"   nombre del campo en el esquema/API y su etiqueta en inglés en la interfaz.
+  -> base: X                 el campo es una variante del campo base X (ver §4). P. ej. university -> publisher.
+  (propia)                   la página no describe ese elemento; la descripción la redactó Claude.
+  [*no citable]              la página lo marca con asterisco: no se usa al generar citas.
+  creador*                   rol principal del tipo (el que hace de "autor" en la cita).
+  Las descripciones oficiales se dejan en inglés, tal como aparecen en la página.
+
+Resumen
+  - 40 tipos en el esquema: 37 con campos bibliográficos + attachment (adjunto suelto)
+    + note y annotation (sin campos).
+  - 121 campos distintos; 58 de ellos son variantes de 13 campos base.
+  - 770 pares tipo-campo y 170 pares tipo-creador.
+  - 37 tipos de creador.
+
+==============================================================================================================
+1. TIPOS DE ÍTEM
+==============================================================================================================
+Cada tipo incluye los campos comunes de §2.1 salvo los que se indican como ausentes, y los cuatro de archivo
+(§2.2) solo si dice "Archivo: sí". Después vienen los campos propios del tipo, en el orden del formulario de Zotero.
+
+Annotation  (annotation)
+------------------------
+  (propia) Anotación de un PDF/EPUB (resaltado, comentario). No es un ítem bibliográfico.
+  Campos: ninguno.
+
+Artwork  (artwork)
+------------------
+  A piece of artwork (e.g., an oil painting, photograph, or sculpture). Also use this item type for other
+  types of images or visual items (e.g., scientific figures).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: artist*, contributor
+  Campos propios (3):
+    artworkMedium "Medium"  -> base: medium
+        The type of artwork or figure or the medium it was created with (e.g., "Watercolor painting", "Wood
+        sculpture", "X-ray Crystallograph", "Scatterplot").
+    artworkSize "Artwork Size"
+        The dimensions of the artwork or figure.
+    eventPlace "Event Place"
+        The geographic location of an event.
+
+Attachment  (attachment)
+------------------------
+  A standalone attachment file (e.g., a PDF, JPEG, DOCX, PPTX, XLSX, or ODT file). Standalone attachment files
+  have limited functionality in Zotero (e.g., they cannot be properly searched or cited). Always attach files
+  to proper Zotero items.
+  Campos comunes: todos salvo abstractNote, date, shortTitle, language, DOI, citationKey, rights, extra
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: ninguno
+  Campos propios (0):
+
+Audio Recording  (audioRecording)
+---------------------------------
+  Any form of audio recording, including music, spoken word, sound effects, archival recordings, or audio-
+  based scientific figures.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: performer*, originalCreator, composer, wordsBy, translator, contributor
+  Campos propios (8):
+    audioRecordingFormat "Format"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    label "Label"  -> base: publisher
+        The recording label distributing an audio recording in a market.
+    place "Place"
+        The place of publication for an item.
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Bill  (bill)
+------------
+  A proposed piece of legislation.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: sponsor*, cosponsor, contributor
+  Campos propios (8):
+    billNumber "Bill Number"  -> base: number
+        The identification number assigned to a proposed piece of legislation.
+    code "Code"
+        The name of the code in which a bill or statute is published.
+    codeVolume "Code Volume"  -> base: volume
+        The volume number of the code containing a bill or statute.
+    section "Section"
+        The section of a bill or statute being cited.
+    codePages "Code Pages"  -> base: pages
+        The pages in the code volume containing a bill or statute.
+    legislativeBody "Legislative Body"  -> base: authority
+        The legislative body (parliament, senate, etc.) debating a bill, holding a hearing, or passing
+        legislation. [Marcado "*": no se usa en citas.]
+    session "Session"
+        The session of a legislative body in which a bill was introduced, statute was passed, or hearing was
+        held.
+    history "History"
+        Resources related to the procedural history of a bill or statute.
+
+Blog Post  (blogPost)
+---------------------
+  An article or entry posted to a personal blog website. For online articles published as part of a larger
+  online publication (e.g., NYT Blogs), using Magazine Article or Newspaper Article generally yields better
+  results.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, translator, commenter, contributor
+  Campos propios (3):
+    blogTitle "Blog Title"  -> base: publicationTitle
+        The title of the blog or website containing a post or specific web page.
+    websiteType "Website Type"  -> base: type
+        Rarely used. Describes the genre of a webpage such as "personal blog" or "intranet".
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Book  (book)
+------------
+  A book or similar published item. For government documents, technical reports, manuals, etc., use Report
+  instead. This item type can also be adapted to fit many types of unusual items.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, seriesEditor
+  Campos propios (14):
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    originalDate "Original Date"
+        The original date an item was published. Enter in ISO format (year-month-day).
+    originalPublisher "Original Publisher"
+        The publisher of the original version of an item (e.g., the untranslated version).
+    originalPlace "Original Place"
+        The geographic location of the publisher of the original version of an item (e.g., the untranslated
+        version).
+    format "Format"  -> base: medium
+        (propia) Formato físico o digital del ítem (p. ej. "eBook", "PDF", "CSV").
+    numPages "# of Pages"
+        The number of pages in a book.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Book Section  (bookSection)
+---------------------------
+  A section of a book. Usually chapters, but also forewords, prefaces, introductions, appendices, afterwords,
+  comments, etc.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, bookAuthor, translator, seriesEditor
+  Campos propios (15):
+    bookTitle "Book Title"  -> base: publicationTitle
+        The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+        published in.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    originalDate "Original Date"
+        The original date an item was published. Enter in ISO format (year-month-day).
+    originalPublisher "Original Publisher"
+        The publisher of the original version of an item (e.g., the untranslated version).
+    originalPlace "Original Place"
+        The geographic location of the publisher of the original version of an item (e.g., the untranslated
+        version).
+    format "Format"  -> base: medium
+        (propia) Formato físico o digital del ítem (p. ej. "eBook", "PDF", "CSV").
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Case  (case)
+------------
+  A legal case, either published or unpublished.
+  Campos comunes: todos salvo title, date
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, counsel, contributor
+  Campos propios (8):
+    caseName "Case Name"  -> base: title
+        The title of a legal case.
+    court "Court"  -> base: authority
+        The court where a legal case was argued.
+    dateDecided "Date Decided"  -> base: date
+        The date a legal case was decided.
+    docketNumber "Docket Number"  -> base: number
+        The docket number assigned to a to-be-heard legal case.
+    reporter "Reporter"
+        The reporter in which a legal case is published.
+    reporterVolume "Reporter Volume"  -> base: volume
+        The volume number of the reporter in which a legal case is published.
+    firstPage "First Page"  -> base: pages
+        The first page of the reporter volume on which a case appears.
+    history "History"
+        Resources related to the procedural history of a legal case.
+
+Conference Paper  (conferencePaper)
+-----------------------------------
+  A paper presented at a conference and subsequently published in a formal conference proceedings publication
+  (e.g., as a book, report, or issue of a journal). For conference papers that have not been published in a
+  proceedings, use Presentation.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, seriesEditor
+  Campos propios (13):
+    proceedingsTitle "Proceedings Title"  -> base: publicationTitle
+        The title of the conference proceedings where a conference paper was published.
+    conferenceName "Conference Name"
+        The name of the conference or meeting where a conference paper or presentation was presented.
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        For Presentations, the place where the meeting was held or the presentation was made. For Conference
+        Papers (published in a conference proceedings), use this field for the place where the proceedings was
+        published. If separate locations are needed for the publication place and the location of the
+        conference, leave this field blank and add Event Place and Publisher Place fields to Extra (see Citing
+        Fields from Extra below).
+    eventPlace "Event Place"
+        The geographic location of an event.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    issue "Issue"
+        The issue number of a periodical. Typically, issues start at 1 at the beginning of each year/volume.
+        If a periodical has only a volume number and no issue number, leave this field blank.
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Dataset  (dataset)
+------------------
+  A collection of data.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor
+  Campos propios (6):
+    identifier "Identifier"  -> base: number
+        (propia) Identificador del conjunto de datos en su repositorio.
+    type "Type"
+        (propia) Tipo de conjunto de datos (p. ej. "Survey data", "Genomic sequence").
+    versionNumber "Version"
+        (propia) Versión del conjunto de datos.
+    repository "Repository"  -> base: publisher
+        (propia) Repositorio o servidor que publica el ítem (p. ej. "arXiv", "Zenodo"). Equivale a publisher.
+    repositoryLocation "Repo. Location"  -> base: place
+        (propia) Ubicación del repositorio. Equivale a place.
+    format "Format"  -> base: medium
+        (propia) Formato físico o digital del ítem (p. ej. "eBook", "PDF", "CSV").
+
+Dictionary Entry  (dictionaryEntry)
+-----------------------------------
+  An entry published as part of a dictionary.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, seriesEditor
+  Campos propios (10):
+    dictionaryTitle "Dictionary Title"  -> base: publicationTitle
+        The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+        published in.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Document  (document)
+--------------------
+  A generic document item. This item type has a poor selection of fields and poor support in citation styles,
+  so it should generally be avoided.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, reviewedAuthor
+  Campos propios (3):
+    type "Type"
+        (propia) Tipo de documento genérico (texto libre).
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+
+E-mail  (email)
+---------------
+  A message sent via email. This type could also be used for other forms of personal communication.
+  Campos comunes: todos salvo title
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, translator, contributor, recipient
+  Campos propios (1):
+    subject "Subject"  -> base: title
+        The title of an email.
+
+Encyclopedia Article  (encyclopediaArticle)
+-------------------------------------------
+  An article or chapter published as part of an encyclopedia.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, seriesEditor
+  Campos propios (10):
+    encyclopediaTitle "Encyclopedia Title"  -> base: publicationTitle
+        The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+        published in.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Film  (film)
+------------
+  A film or motion picture. Generally, use this type for artistically-oriented films (including fictional,
+  non-fictional, and documentary films). For other types of video items, use Video Recording.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: director*, producer, scriptwriter, castMember, host, guest, narrator, translator, contributor
+  Campos propios (5):
+    distributor "Distributor"  -> base: publisher
+        The organization distributing a film in a market.
+    place "Place"
+        The place of publication for an item.
+    genre "Genre"  -> base: type
+        The genre of film (e.g., "horror").
+    videoRecordingFormat "Format"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+
+Forum Post  (forumPost)
+-----------------------
+  A post on an online discussion forum. Also use this type for items such as Facebook posts or tweets.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, contributor
+  Campos propios (2):
+    forumTitle "Forum/Listserv Title"  -> base: publicationTitle
+        The forum or listserv where a post was made.
+    postType "Post Type"  -> base: type
+        A description of the specific type of forum post (e.g., "Tweet" or "Facebook comment").
+
+Hearing  (hearing)
+------------------
+  A formal hearing or meeting report by a legislative body.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: contributor*
+  Campos propios (9):
+    committee "Committee"
+        The committee holding a hearing.
+    publisher "Publisher"
+        The publisher of an item.
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    documentNumber "Document Number"  -> base: number
+        The document identification number assigned to a published transcript or record of a committee
+        hearing.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    legislativeBody "Legislative Body"  -> base: authority
+        The legislative body (parliament, senate, etc.) debating a bill, holding a hearing, or passing
+        legislation. [Marcado "*": no se usa en citas.]
+    session "Session"
+        The session of a legislative body in which a bill was introduced, statute was passed, or hearing was
+        held.
+    history "History"
+        Resources related to the procedural history of a bill or statute.
+    place "Place"
+        The place of publication for an item.
+
+Instant Message  (instantMessage)
+---------------------------------
+  A message sent via an instant message or chat service. This type could also be used for other forms of
+  personal communication.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, contributor, recipient
+  Campos propios (0):
+
+Interview  (interview)
+----------------------
+  An interview with a person, including recordings, transcripts, or other records of the interview.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: interviewee*, contributor, interviewer, translator
+  Campos propios (3):
+    interviewMedium "Medium"  -> base: medium
+        For interviews, the format in which an interview was recorded (e.g., "Audio Recording", "Video
+        Recording", "Transcript").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+
+Journal Article  (journalArticle)
+---------------------------------
+  An article published in a scholarly journal (either print or online).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, reviewedAuthor
+  Campos propios (16):
+    publicationTitle "Publication"
+        The title of the periodical (journal, magazine, newspaper, etc.) containing the cited item
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    issue "Issue"
+        The issue number of a periodical. Typically, issues start at 1 at the beginning of each year/volume.
+        If a periodical has only a volume number and no issue number, leave this field blank.
+    section "Section"
+        (propia) Sección de la revista en la que aparece el artículo.
+    partNumber "Part Number"
+        (propia) Número de la parte (artículo publicado en partes, o norma dividida en partes).
+    partTitle "Part Title"
+        (propia) Título de esa parte.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    seriesText "Series Text"
+        (propia) Texto adicional de la serie (p. ej. "New series"), típico en revistas antiguas.
+    journalAbbreviation "Journal Abbr"
+        The abbreviated title of a journal. When using the Zotero Word or LibreOffice plugins, Zotero can
+        automatically abbreviate titles using the MEDLINE list. Use this field to enter abbreviations using
+        other systems or for generating bibliographies outside of a word processor.
+    PMID "PMID"
+        The PubMed identifier.
+    PMCID "PMCID"
+        The PubMed Central identifier.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Letter  (letter)
+----------------
+  A letter sent between persons or organizations. This type could also be used for other forms of personal
+  communication.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, recipient, contributor, translator
+  Campos propios (2):
+    letterType "Type"  -> base: type
+        For letters, a description of the specific type or purpose of letter (e.g., "Private correspondence).
+    eventPlace "Event Place"
+        The geographic location of an event.
+
+Magazine Article  (magazineArticle)
+-----------------------------------
+  An article published in a non-scholarly, popular, or trade magazine (either print or online).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, translator, reviewedAuthor
+  Campos propios (7):
+    publicationTitle "Publication"
+        The title of the periodical (journal, magazine, newspaper, etc.) containing the cited item
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    issue "Issue"
+        The issue number of a periodical. Typically, issues start at 1 at the beginning of each year/volume.
+        If a periodical has only a volume number and no issue number, leave this field blank.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Manuscript  (manuscript)
+------------------------
+  An unpublished manuscript. Use this type for both historical documents and modern unpublished work (e.g.,
+  unpublished manuscripts, manuscripts submitted for publication, working papers that are not widely
+  available). Can also be used for other forms of historical or archival documents. This item type can also be
+  adapted to fit many types of unusual items.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, translator
+  Campos propios (5):
+    manuscriptType "Type"  -> base: type
+        For manuscripts, a description of the type or status of the manuscript (e.g., "Unpublished
+        manuscript", "Manuscript submitted for publication", "Working paper").
+    institution "Institution"  -> base: publisher
+        (propia) Institución en la que se produjo o conserva el manuscrito (p. ej. working papers).
+    place "Place"
+        The place of publication for an item.
+    numPages "# of Pages"
+        The number of pages in a book.
+    number "Number"
+        (propia) Número o identificador del manuscrito.
+
+Map  (map)
+----------
+  A map. Also use this type for geographic models.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: cartographer*, contributor, seriesEditor
+  Campos propios (7):
+    mapType "Type"  -> base: type
+        For maps, a description of the specific type or genre of map.
+    scale "Scale"
+        The scale of a map or model.
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Newspaper Article  (newspaperArticle)
+-------------------------------------
+  An article published in a newspaper (either print or online).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, translator, reviewedAuthor
+  Campos propios (9):
+    publicationTitle "Publication"
+        The title of the periodical (journal, magazine, newspaper, etc.) containing the cited item
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    issue "Issue"
+        The issue number of a periodical. Typically, issues start at 1 at the beginning of each year/volume.
+        If a periodical has only a volume number and no issue number, leave this field blank.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    section "Section"
+        Section of a newspaper.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Note  (note)
+------------
+  A standalone note. Notes can be used for organizing and annotating in Zotero. If you cite a standalone note,
+  Zotero will use the first 120 characters as the item title (and will treat the note as an author-less and
+  date-less item). Citing notes is not a reliable way to add standalone commentary to a bibliography or
+  reference list.
+  Campos: ninguno.
+
+Patent  (patent)
+----------------
+  A patent awarded for an invention.
+  Campos comunes: todos salvo date
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: inventor*, attorneyAgent, contributor
+  Campos propios (13):
+    place "Place"
+        The place of publication for an item.
+    country "Country"
+        The country issuing a patent.
+    assignee "Assignee"
+        The entity to which a ownership rights for a patent are assigned.
+    issuingAuthority "Issuing Authority"  -> base: authority
+        The authority or office reviewing the application and issuing the patent.
+    patentNumber "Patent Number"  -> base: number
+        The identification number assigned to a patent.
+    filingDate "Filing Date"
+        The date on which a patent application was filed.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    applicationNumber "Application Number"
+        The identification number assigned to a patent application.
+    priorityNumbers "Priority Numbers"
+        The international application number of a patent used for priority rights claims.
+    issueDate "Issue Date"  -> base: date
+        The date on which a patent is formally issued.
+    priorityDate "Priority Date"  -> base: originalDate
+        (propia) Fecha de prioridad de la patente (fecha de la primera solicitud de la que reclama prioridad).
+    references "References"
+        Resources related to the history of a patent.
+    legalStatus "Legal Status"  -> base: status
+        The legal status of a patent or application.
+
+Podcast  (podcast)
+------------------
+  A podcast (an episode of an audio or video program distributed online, often via subscription).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: podcaster*, guest, producer, executiveProducer, seriesCreator, director, scriptwriter,
+  castMember, translator, contributor
+  Campos propios (6):
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    episodeNumber "Episode Number"  -> base: number
+        The episode number of a podcast or TV/radio broadcast.
+    audioFileType "File Type"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+
+Preprint  (preprint)
+--------------------
+  A version of a scholarly or scientific paper that precedes formal peer review and publication in a peer-
+  reviewed scholarly or scientific journal. The preprint may be available, often as a non-typeset version
+  available for free, before or after a paper is published in a journal, through institutional repositories or
+  preprint servers. This item type can also be used for working papers.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor, editor, translator, reviewedAuthor
+  Campos propios (6):
+    genre "Genre"  -> base: type
+        (propia) Género o subtipo del preprint (p. ej. "Working paper").
+    repository "Repository"  -> base: publisher
+        (propia) Repositorio o servidor que publica el ítem (p. ej. "arXiv", "Zenodo"). Equivale a publisher.
+    archiveID "Archive ID"  -> base: number
+        (propia) Identificador del preprint en su repositorio (p. ej. "arXiv:2101.00001").
+    place "Place"
+        The place of publication for an item.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+
+Presentation  (presentation)
+----------------------------
+  A presentation made as part of a conference, meeting, symposium, lecture, etc. This item type refers to the
+  presentation itself, not a written version published as part of a conference proceedings (use Conference
+  Paper for such published versions).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: presenter*, chair, organizer, contributor, translator
+  Campos propios (5):
+    presentationType "Type"  -> base: type
+        The type or format of presentation (e.g., "Poster", "Symposium", "Invited address").
+    meetingName "Meeting Name"
+        The name of the conference or meeting where a conference paper or presentation was presented.
+    place "Place"
+        For Presentations, the place where the meeting was held or the presentation was made. For Conference
+        Papers (published in a conference proceedings), use this field for the place where the proceedings was
+        published. If separate locations are needed for the publication place and the location of the
+        conference, leave this field blank and add Event Place and Publisher Place fields to Extra (see Citing
+        Fields from Extra below).
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    sessionTitle "Session Title"  -> base: publicationTitle
+        (propia) Título de la sesión o panel del congreso en que se hizo la presentación.
+
+Radio Broadcast  (radioBroadcast)
+---------------------------------
+  An audio broadcast, such as a radio news show, an episode of a radio entertainment series, or similar.
+  Includes broadcasts from online radio stations and audio broadcasts archived online (cf. Podcast).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: creator*, host, guest, producer, executiveProducer, seriesCreator, director, scriptwriter,
+  castMember, translator, contributor
+  Campos propios (6):
+    programTitle "Program Title"  -> base: publicationTitle
+        The title of a radio or TV show of which an episode is part (e.g., "This American Life" or "60
+        Minutes").
+    episodeNumber "Episode Number"  -> base: number
+        The episode number of a podcast or TV/radio broadcast.
+    audioRecordingFormat "Format"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    network "Network"  -> base: publisher
+        The network broadcasting a TV or radio show.
+    place "Place"
+        The place of publication for an item.
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+
+Report  (report)
+----------------
+  A report published by an organization, institution, government department, or similar entity. Also used for
+  working papers and preprints distributed through institutional repositories or preprint servers. This item
+  type can also be adapted to fit many types of unusual items.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, editor, contributor, translator, seriesEditor
+  Campos propios (9):
+    reportNumber "Report Number"  -> base: number
+        The number of a report. Do not include the words "Number", "No.", "Nº", "№", or similar; these will be
+        added automatically by the citation style.
+    reportType "Report Type"  -> base: type
+        The type of report (e.g., "Technical report", "CPTO Technical Brief") or thesis (e.g., "Doctoral
+        dissertation", "Ph.D. thesis", "Master thesis"; the word 'thesis' or 'dissertation' should be included
+        where applicable).
+    institution "Institution"  -> base: publisher
+        The institution publishing a report or the university granting the degree for a thesis.
+    place "Place"
+        The place of publication for an item.
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+Software  (computerProgram)
+---------------------------
+  A piece of software, an app, or another computer program.
+  Campos comunes: todos salvo language
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: programmer*, contributor
+  Campos propios (7):
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    versionNumber "Version"
+        The version of a computer program.
+    system "System"
+        The operating system or platform a computer program is written for.
+    company "Company"  -> base: publisher
+        The organization publishing a computer program.
+    place "Place"
+        The place of publication for an item.
+    programmingLanguage "Prog. Language"
+        The programming language a computer program is written in. Note that Computer Program uses the
+        Language field differently than other items.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Standard  (standard)
+--------------------
+  A published document describing a standard, or a similar set of industrial or governmental specifications.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, editor, contributor
+  Campos propios (13):
+    organization "Organization"  -> base: authority
+        (propia) Organismo que publica la norma (p. ej. "ISO", "IEEE", "AENOR").
+    committee "Committee"
+        (propia) Comité técnico que elaboró la norma (p. ej. "ISO/TC 46").
+    type "Type"
+        (propia) Tipo de norma (p. ej. "International Standard", "Technical Specification").
+    number "Number"
+        (propia) Número de la norma (p. ej. "ISO 690:2021").
+    versionNumber "Version"
+        (propia) Versión o revisión de la norma.
+    edition "Edition"
+        The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+    status "Status"
+        The publication status of an item (e.g., "forthcoming", "in press", "advance online publication").
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+    partNumber "Part Number"
+        (propia) Número de la parte (artículo publicado en partes, o norma dividida en partes).
+    partTitle "Part Title"
+        (propia) Título de esa parte.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    numPages "# of Pages"
+        The number of pages in a book.
+
+Statute  (statute)
+------------------
+  A law or other piece of enacted legislation.
+  Campos comunes: todos salvo title, date
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, contributor
+  Campos propios (9):
+    nameOfAct "Name of Act"  -> base: title
+        The full title of a statute.
+    code "Code"
+        The name of the code in which a bill or statute is published.
+    codeNumber "Code Number"
+        The identification number assigned to a piece of legislation in the code in which it is published.
+    publicLawNumber "Public Law Number"  -> base: number
+        The identification number assigned to an enacted piece of legislation. (Ver
+        loc.gov/law/help/statutes.php.)
+    dateEnacted "Date Enacted"  -> base: date
+        The date a statute was enacted.
+    pages "Pages"
+        The page range of an item that is part of a larger publication. Also to be used for locators or
+        article numbers in e-journals and ebooks.
+    section "Section"
+        The section of a bill or statute being cited.
+    session "Session"
+        The session of a legislative body in which a bill was introduced, statute was passed, or hearing was
+        held.
+    history "History"
+        Resources related to the procedural history of a bill or statute.
+
+Thesis  (thesis)
+----------------
+  A thesis submitted as part of a student applying for a degree (either published or unpublished).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: author*, contributor
+  Campos propios (8):
+    thesisType "Type"  -> base: type
+        The type of report (e.g., "Technical report", "CPTO Technical Brief") or thesis (e.g., "Doctoral
+        dissertation", "Ph.D. thesis", "Master thesis"; the word 'thesis' or 'dissertation' should be included
+        where applicable).
+    university "University"  -> base: publisher
+        The institution publishing a report or the university granting the degree for a thesis.
+    place "Place"
+        The place of publication for an item.
+    series "Series"
+        Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+        Comparative Politics", "Special issue on Advances in Personality Assessment").
+    seriesNumber "Series Number"
+        The number of an item in a series.
+    numPages "# of Pages"
+        The number of pages in a book.
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+    ISSN "ISSN"
+        The International Standard Serial Number of a periodical or series publication.
+
+TV Broadcast  (tvBroadcast)
+---------------------------
+  An episode of a television series.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: director*, producer, executiveProducer, seriesCreator, scriptwriter, castMember, host, guest,
+  narrator, translator, contributor
+  Campos propios (6):
+    programTitle "Program Title"  -> base: publicationTitle
+        The title of a radio or TV show of which an episode is part (e.g., "This American Life" or "60
+        Minutes").
+    episodeNumber "Episode Number"  -> base: number
+        The episode number of a podcast or TV/radio broadcast.
+    videoRecordingFormat "Format"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    network "Network"  -> base: publisher
+        The network broadcasting a TV or radio show.
+    place "Place"
+        The place of publication for an item.
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+
+Video Recording  (videoRecording)
+---------------------------------
+  A video recording. Use this type for general video items that do not fit into one of the more specific video
+  item types (e.g., Film, TV Broadcast), such as YouTube videos or video-based scientific figures.
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): sí
+  Creadores: creator*, director, producer, scriptwriter, executiveProducer, castMember, host, guest, narrator,
+  translator, contributor
+  Campos propios (8):
+    videoRecordingFormat "Format"  -> base: medium
+        The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+    seriesTitle "Series Title"
+        Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+        Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field
+        is currently equivalent to "Series" and is erroneously used instead of series in some item types
+        (e.g., Audio Recording, Map).
+    volume "Volume"
+        The volume of a (typically multi-volume) publication an article or chapter is published in. For
+        numeric volumes, enter only a number. If the volume should be cited with a volume title, include the
+        title in this field (e.g,. "2: Organizational Psychology").
+    numberOfVolumes "# of Volumes"
+        The number of volumes in a collective work.
+    studio "Studio"  -> base: publisher
+        The studio producing a video recording.
+    place "Place"
+        The place of publication for an item.
+    runningTime "Running Time"
+        The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+    ISBN "ISBN"
+        The International Standard Book Number of a book or other publication.
+
+Web Page  (webpage)
+-------------------
+  An online page of a website. When possible, use one of the more specific item types above (e.g., Magazine
+  Article, Blog Post, Report).
+  Campos comunes: todos
+  Archivo (archive, archiveLocation, libraryCatalog, callNumber): no
+  Creadores: author*, contributor, translator
+  Campos propios (4):
+    websiteTitle "Website Title"  -> base: publicationTitle
+        The title of the blog or website containing a post or specific web page.
+    websiteType "Website Type"  -> base: type
+        Rarely used. Describes the genre of a webpage such as "personal blog" or "intranet".
+    publisher "Publisher"
+        The publisher of an item.
+    place "Place"
+        The place of publication for an item.
+
+==============================================================================================================
+2. CATÁLOGO DE CAMPOS
+==============================================================================================================
+Formato: nombreInterno "Etiqueta"  [nº de tipos]  -> base. Debajo, descripción y tipos que lo usan.
+Si la descripción depende del tipo, se da una por tipo entre corchetes.
+
+2.1 Campos comunes (presentes en casi todos los tipos)
+------------------------------------------------------
+  Además, la página describe como generales "Item Type", "Creators", "Date Added" y "Date Modified":
+  no son campos del formulario sino propiedades del ítem (tipo, lista de creadores y fechas automáticas).
+  (Item Type)
+      The broad type of item. Item types are generally determined based on how items should be cited. See
+      descriptions of Zotero’s item types above. You can store more specific information about the type of
+      item (e.g., a novel versus a biography book) in the Type, Format, or Extra fields or using tags.
+  (Creators)
+      The individuals or entities creating or associated with a work. An item can have multiple creators of
+      numerous different kinds. See the list of creator types below.
+  (Date Added)
+      The date and time an item was added in Zotero. This field is filled automatically.
+  (Date Modified)
+      The date and time an item was last modified in Zotero. This field is filled and updated automatically.
+  title "Title"  [35]
+      The principal title of an item. Should be entered in sentence case.
+      Tipos: todos los que tienen campos salvo case, email, statute
+  abstractNote "Abstract"  [37]
+      Short description of the work
+      Tipos: todos los que tienen campos salvo attachment
+  date "Date"  [34]
+      Date of publication. Use "Accessed" for the date an electronic resource was accessed.
+      Tipos: todos los que tienen campos salvo attachment, case, patent, statute
+  shortTitle "Short Title"  [37]
+      Short form of the title, often without the subtitle. Used mostly in footnote styles for subsequent
+      citations
+      Tipos: todos los que tienen campos salvo attachment
+  language "Language"  [36]
+      The language of publication for an item. We recommend storing these as two letter ISO language codes
+      followed by two letter ISO country codes (e.g., en-US for American English, or de-DE for German).
+      
+      The Language field is used to determine whether English Title Casing rules should be applied when
+      formatting item titles. If the stored item data is in English (e.g., for translated titles), enter en-US
+      or en-UK, even if the item content is in another language.
+      Tipos: todos los que tienen campos salvo attachment, computerProgram
+  url "URL"  [38]
+      URL (web-address) where the full item was accessed. Do not use this field for links to catalog records
+      (e.g., libraries or Google Books) or abstracts—these should be instead added as links.
+      Tipos: todos los que tienen campos
+  accessDate "Accessed"  [38]
+      Date an electronic resource was accessed. Typically filled automatically. You can enter "today,"
+      "yesterday," and "tomorrow" to quickly enter the corresponding date.
+      Tipos: todos los que tienen campos
+  DOI "DOI"  [37]
+      The Digital Object Identifier of an item. For items other than journal articles, the DOI can be stored
+      in Extra. See Citing Fields from Extra below.
+      Tipos: todos los que tienen campos salvo attachment
+  citationKey "Citation Key"  [37]
+      (propia) Clave de cita del ítem (p. ej. para BibTeX/Better BibTeX). Campo reciente; la página no lo
+      describe.
+      Tipos: todos los que tienen campos salvo attachment
+  rights "License"  [37]
+      The copyright terms, license, or release status for an item. [La página lo llama "Rights*" (no citable);
+      en el esquema actual la etiqueta es "License".]
+      Tipos: todos los que tienen campos salvo attachment
+  extra "Extra"  [37]
+      Free field for storing additional information. You can also store additional variables not included in
+      an item’s fields that can be used when making citations and bibliographies . See Citing Fields from
+      Extra below.
+      Tipos: todos los que tienen campos salvo attachment
+
+2.2 Campos de archivo y biblioteca (25 tipos)
+---------------------------------------------
+  archive "Archive"  [25]
+      Mainly for archival resources, the archive where an item was found. Also used for repositories, such as
+      government report databases, institutional repositories, or subject repositories.
+      Tipos: todos los que tienen campos salvo attachment, bill, blogPost, case, email, forumPost, hearing,
+      instantMessage, patent, podcast, presentation, statute, webpage
+  archiveLocation "Loc. in Archive"  [25]
+      The location of an item in an archive, such as a box and folder number or other relevant location
+      information from the finding aid. Include the subcollection/call number, box number, and folder number
+      together in this field. For additional tips on citing archival sources in Zotero, see here.
+      Tipos: todos los que tienen campos salvo attachment, bill, blogPost, case, email, forumPost, hearing,
+      instantMessage, patent, podcast, presentation, statute, webpage
+  libraryCatalog "Library Catalog"  [25]
+      The catalog or database an item was imported from. This field is used, for example, in the MLA citation
+      style. Uses of this field are broader than actual library catalogs.
+      Tipos: todos los que tienen campos salvo attachment, bill, blogPost, case, email, forumPost, hearing,
+      instantMessage, patent, podcast, presentation, statute, webpage
+  callNumber "Call Number"  [25]
+      The call number of an item in a library. For citing archival sources, also include the Call Number in
+      Loc. in Archive (if applicable).
+      Tipos: todos los que tienen campos salvo attachment, bill, blogPost, case, email, forumPost, hearing,
+      instantMessage, patent, podcast, presentation, statute, webpage
+
+2.3 Resto de campos (alfabético)
+--------------------------------
+  applicationNumber "Application Number"  [1]
+      The identification number assigned to a patent application.
+      Tipos: patent
+  archiveID "Archive ID"  [1]  -> base: number
+      (propia) Identificador del preprint en su repositorio (p. ej. "arXiv:2101.00001").
+      Tipos: preprint
+  artworkMedium "Medium"  [1]  -> base: medium
+      The type of artwork or figure or the medium it was created with (e.g., "Watercolor painting", "Wood
+      sculpture", "X-ray Crystallograph", "Scatterplot").
+      Tipos: artwork
+  artworkSize "Artwork Size"  [1]
+      The dimensions of the artwork or figure.
+      Tipos: artwork
+  assignee "Assignee"  [1]
+      The entity to which a ownership rights for a patent are assigned.
+      Tipos: patent
+  audioFileType "File Type"  [1]  -> base: medium
+      The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+      Tipos: podcast
+  audioRecordingFormat "Format"  [2]  -> base: medium
+      The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+      Tipos: audioRecording, radioBroadcast
+  billNumber "Bill Number"  [1]  -> base: number
+      The identification number assigned to a proposed piece of legislation.
+      Tipos: bill
+  blogTitle "Blog Title"  [1]  -> base: publicationTitle
+      The title of the blog or website containing a post or specific web page.
+      Tipos: blogPost
+  bookTitle "Book Title"  [1]  -> base: publicationTitle
+      The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+      published in.
+      Tipos: bookSection
+  caseName "Case Name"  [1]  -> base: title
+      The title of a legal case.
+      Tipos: case
+  code "Code"  [2]
+      The name of the code in which a bill or statute is published.
+      Tipos: bill, statute
+  codeNumber "Code Number"  [1]
+      The identification number assigned to a piece of legislation in the code in which it is published.
+      Tipos: statute
+  codePages "Code Pages"  [1]  -> base: pages
+      The pages in the code volume containing a bill or statute.
+      Tipos: bill
+  codeVolume "Code Volume"  [1]  -> base: volume
+      The volume number of the code containing a bill or statute.
+      Tipos: bill
+  committee "Committee"  [2]
+      [hearing] The committee holding a hearing.
+      [standard] (propia) Comité técnico que elaboró la norma (p. ej. "ISO/TC 46").
+      Tipos: hearing, standard
+  company "Company"  [1]  -> base: publisher
+      The organization publishing a computer program.
+      Tipos: computerProgram
+  conferenceName "Conference Name"  [1]
+      The name of the conference or meeting where a conference paper or presentation was presented.
+      Tipos: conferencePaper
+  country "Country"  [1]
+      The country issuing a patent.
+      Tipos: patent
+  court "Court"  [1]  -> base: authority
+      The court where a legal case was argued.
+      Tipos: case
+  dateDecided "Date Decided"  [1]  -> base: date
+      The date a legal case was decided.
+      Tipos: case
+  dateEnacted "Date Enacted"  [1]  -> base: date
+      The date a statute was enacted.
+      Tipos: statute
+  dictionaryTitle "Dictionary Title"  [1]  -> base: publicationTitle
+      The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+      published in.
+      Tipos: dictionaryEntry
+  distributor "Distributor"  [1]  -> base: publisher
+      The organization distributing a film in a market.
+      Tipos: film
+  docketNumber "Docket Number"  [1]  -> base: number
+      The docket number assigned to a to-be-heard legal case.
+      Tipos: case
+  documentNumber "Document Number"  [1]  -> base: number
+      The document identification number assigned to a published transcript or record of a committee hearing.
+      Tipos: hearing
+  edition "Edition"  [7]
+      The edition of a work. Where numeric, enter as simple Arabic numeral (i.e., "2" rather than "second").
+      Tipos: book, bookSection, dictionaryEntry, encyclopediaArticle, map, newspaperArticle, standard
+  encyclopediaTitle "Encyclopedia Title"  [1]  -> base: publicationTitle
+      The title of the book, encyclopedia, or dictionary that a chapter, entry, or other book section is
+      published in.
+      Tipos: encyclopediaArticle
+  episodeNumber "Episode Number"  [3]  -> base: number
+      The episode number of a podcast or TV/radio broadcast.
+      Tipos: podcast, radioBroadcast, tvBroadcast
+  eventPlace "Event Place"  [3]
+      The geographic location of an event.
+      Tipos: artwork, conferencePaper, letter
+  filingDate "Filing Date"  [1]
+      The date on which a patent application was filed.
+      Tipos: patent
+  firstPage "First Page"  [1]  -> base: pages
+      The first page of the reporter volume on which a case appears.
+      Tipos: case
+  format "Format"  [3]  -> base: medium
+      (propia) Formato físico o digital del ítem (p. ej. "eBook", "PDF", "CSV").
+      Tipos: book, bookSection, dataset
+  forumTitle "Forum/Listserv Title"  [1]  -> base: publicationTitle
+      The forum or listserv where a post was made.
+      Tipos: forumPost
+  genre "Genre"  [2]  -> base: type
+      [film] The genre of film (e.g., "horror").
+      [preprint] (propia) Género o subtipo del preprint (p. ej. "Working paper").
+      Tipos: film, preprint
+  history "History"  [4]
+      [bill] Resources related to the procedural history of a bill or statute.
+      [statute] Resources related to the procedural history of a bill or statute.
+      [hearing] Resources related to the procedural history of a bill or statute.
+      [case] Resources related to the procedural history of a legal case.
+      Tipos: bill, case, hearing, statute
+  identifier "Identifier"  [1]  -> base: number
+      (propia) Identificador del conjunto de datos en su repositorio.
+      Tipos: dataset
+  institution "Institution"  [2]  -> base: publisher
+      [report] The institution publishing a report or the university granting the degree for a thesis.
+      [manuscript] (propia) Institución en la que se produjo o conserva el manuscrito (p. ej. working papers).
+      Tipos: manuscript, report
+  interviewMedium "Medium"  [1]  -> base: medium
+      For interviews, the format in which an interview was recorded (e.g., "Audio Recording", "Video
+      Recording", "Transcript").
+      Tipos: interview
+  ISBN "ISBN"  [12]
+      The International Standard Book Number of a book or other publication.
+      Tipos: audioRecording, book, bookSection, computerProgram, conferencePaper, dictionaryEntry,
+      encyclopediaArticle, map, report, standard, thesis, videoRecording
+  ISSN "ISSN"  [9]
+      The International Standard Serial Number of a periodical or series publication.
+      Tipos: blogPost, book, bookSection, conferencePaper, journalArticle, magazineArticle, newspaperArticle,
+      report, thesis
+  issue "Issue"  [4]
+      The issue number of a periodical. Typically, issues start at 1 at the beginning of each year/volume. If
+      a periodical has only a volume number and no issue number, leave this field blank.
+      Tipos: conferencePaper, journalArticle, magazineArticle, newspaperArticle
+  issueDate "Issue Date"  [1]  -> base: date
+      The date on which a patent is formally issued.
+      Tipos: patent
+  issuingAuthority "Issuing Authority"  [1]  -> base: authority
+      The authority or office reviewing the application and issuing the patent.
+      Tipos: patent
+  journalAbbreviation "Journal Abbr"  [1]
+      The abbreviated title of a journal. When using the Zotero Word or LibreOffice plugins, Zotero can
+      automatically abbreviate titles using the MEDLINE list. Use this field to enter abbreviations using
+      other systems or for generating bibliographies outside of a word processor.
+      Tipos: journalArticle
+  label "Label"  [1]  -> base: publisher
+      The recording label distributing an audio recording in a market.
+      Tipos: audioRecording
+  legalStatus "Legal Status"  [1]  -> base: status
+      The legal status of a patent or application.
+      Tipos: patent
+  legislativeBody "Legislative Body"  [2]  -> base: authority
+      The legislative body (parliament, senate, etc.) debating a bill, holding a hearing, or passing
+      legislation. [Marcado "*": no se usa en citas.]
+      Tipos: bill, hearing
+  letterType "Type"  [1]  -> base: type
+      For letters, a description of the specific type or purpose of letter (e.g., "Private correspondence).
+      Tipos: letter
+  manuscriptType "Type"  [1]  -> base: type
+      For manuscripts, a description of the type or status of the manuscript (e.g., "Unpublished manuscript",
+      "Manuscript submitted for publication", "Working paper").
+      Tipos: manuscript
+  mapType "Type"  [1]  -> base: type
+      For maps, a description of the specific type or genre of map.
+      Tipos: map
+  meetingName "Meeting Name"  [1]
+      The name of the conference or meeting where a conference paper or presentation was presented.
+      Tipos: presentation
+  nameOfAct "Name of Act"  [1]  -> base: title
+      The full title of a statute.
+      Tipos: statute
+  network "Network"  [2]  -> base: publisher
+      The network broadcasting a TV or radio show.
+      Tipos: radioBroadcast, tvBroadcast
+  number "Number"  [2]
+      [manuscript] (propia) Número o identificador del manuscrito.
+      [standard] (propia) Número de la norma (p. ej. "ISO 690:2021").
+      Tipos: manuscript, standard
+  numberOfVolumes "# of Volumes"  [8]
+      The number of volumes in a collective work.
+      Tipos: audioRecording, book, bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle,
+      hearing, videoRecording
+  numPages "# of Pages"  [4]
+      The number of pages in a book.
+      Tipos: book, manuscript, standard, thesis
+  organization "Organization"  [1]  -> base: authority
+      (propia) Organismo que publica la norma (p. ej. "ISO", "IEEE", "AENOR").
+      Tipos: standard
+  originalDate "Original Date"  [2]
+      The original date an item was published. Enter in ISO format (year-month-day).
+      Tipos: book, bookSection
+  originalPlace "Original Place"  [2]
+      The geographic location of the publisher of the original version of an item (e.g., the untranslated
+      version).
+      Tipos: book, bookSection
+  originalPublisher "Original Publisher"  [2]
+      The publisher of the original version of an item (e.g., the untranslated version).
+      Tipos: book, bookSection
+  pages "Pages"  [11]
+      The page range of an item that is part of a larger publication. Also to be used for locators or article
+      numbers in e-journals and ebooks.
+      Tipos: bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle, hearing, journalArticle,
+      magazineArticle, newspaperArticle, patent, report, statute
+  partNumber "Part Number"  [2]
+      (propia) Número de la parte (artículo publicado en partes, o norma dividida en partes).
+      Tipos: journalArticle, standard
+  partTitle "Part Title"  [2]
+      (propia) Título de esa parte.
+      Tipos: journalArticle, standard
+  patentNumber "Patent Number"  [1]  -> base: number
+      The identification number assigned to a patent.
+      Tipos: patent
+  place "Place"  [27]
+      [resto] The place of publication for an item.
+      [presentation] For Presentations, the place where the meeting was held or the presentation was made. For
+      Conference Papers (published in a conference proceedings), use this field for the place where the
+      proceedings was published. If separate locations are needed for the publication place and the location
+      of the conference, leave this field blank and add Event Place and Publisher Place fields to Extra (see
+      Citing Fields from Extra below).
+      [conferencePaper] For Presentations, the place where the meeting was held or the presentation was made.
+      For Conference Papers (published in a conference proceedings), use this field for the place where the
+      proceedings was published. If separate locations are needed for the publication place and the location
+      of the conference, leave this field blank and add Event Place and Publisher Place fields to Extra (see
+      Citing Fields from Extra below).
+      Tipos: todos los que tienen campos salvo artwork, attachment, bill, blogPost, case, dataset, email,
+      forumPost, instantMessage, letter, statute
+  PMCID "PMCID"  [1]
+      The PubMed Central identifier.
+      Tipos: journalArticle
+  PMID "PMID"  [1]
+      The PubMed identifier.
+      Tipos: journalArticle
+  postType "Post Type"  [1]  -> base: type
+      A description of the specific type of forum post (e.g., "Tweet" or "Facebook comment").
+      Tipos: forumPost
+  presentationType "Type"  [1]  -> base: type
+      The type or format of presentation (e.g., "Poster", "Symposium", "Invited address").
+      Tipos: presentation
+  priorityDate "Priority Date"  [1]  -> base: originalDate
+      (propia) Fecha de prioridad de la patente (fecha de la primera solicitud de la que reclama prioridad).
+      Tipos: patent
+  priorityNumbers "Priority Numbers"  [1]
+      The international application number of a patent used for priority rights claims.
+      Tipos: patent
+  proceedingsTitle "Proceedings Title"  [1]  -> base: publicationTitle
+      The title of the conference proceedings where a conference paper was published.
+      Tipos: conferencePaper
+  programmingLanguage "Prog. Language"  [1]
+      The programming language a computer program is written in. Note that Computer Program uses the Language
+      field differently than other items.
+      Tipos: computerProgram
+  programTitle "Program Title"  [2]  -> base: publicationTitle
+      The title of a radio or TV show of which an episode is part (e.g., "This American Life" or "60
+      Minutes").
+      Tipos: radioBroadcast, tvBroadcast
+  publicationTitle "Publication"  [3]
+      The title of the periodical (journal, magazine, newspaper, etc.) containing the cited item
+      Tipos: journalArticle, magazineArticle, newspaperArticle
+  publicLawNumber "Public Law Number"  [1]  -> base: number
+      The identification number assigned to an enacted piece of legislation. (Ver
+      loc.gov/law/help/statutes.php.)
+      Tipos: statute
+  publisher "Publisher"  [15]
+      The publisher of an item.
+      Tipos: book, bookSection, conferencePaper, dictionaryEntry, document, encyclopediaArticle, hearing,
+      interview, journalArticle, magazineArticle, map, newspaperArticle, podcast, standard, webpage
+  references "References"  [1]
+      Resources related to the history of a patent.
+      Tipos: patent
+  reporter "Reporter"  [1]
+      The reporter in which a legal case is published.
+      Tipos: case
+  reporterVolume "Reporter Volume"  [1]  -> base: volume
+      The volume number of the reporter in which a legal case is published.
+      Tipos: case
+  reportNumber "Report Number"  [1]  -> base: number
+      The number of a report. Do not include the words "Number", "No.", "Nº", "№", or similar; these will be
+      added automatically by the citation style.
+      Tipos: report
+  reportType "Report Type"  [1]  -> base: type
+      The type of report (e.g., "Technical report", "CPTO Technical Brief") or thesis (e.g., "Doctoral
+      dissertation", "Ph.D. thesis", "Master thesis"; the word 'thesis' or 'dissertation' should be included
+      where applicable).
+      Tipos: report
+  repository "Repository"  [2]  -> base: publisher
+      (propia) Repositorio o servidor que publica el ítem (p. ej. "arXiv", "Zenodo"). Equivale a publisher.
+      Tipos: dataset, preprint
+  repositoryLocation "Repo. Location"  [1]  -> base: place
+      (propia) Ubicación del repositorio. Equivale a place.
+      Tipos: dataset
+  runningTime "Running Time"  [6]
+      The running time of any type of recording. Enter with the unit (e.g., 120 mins).
+      Tipos: audioRecording, film, podcast, radioBroadcast, tvBroadcast, videoRecording
+  scale "Scale"  [1]
+      The scale of a map or model.
+      Tipos: map
+  section "Section"  [4]
+      [newspaperArticle] Section of a newspaper.
+      [bill] The section of a bill or statute being cited.
+      [statute] The section of a bill or statute being cited.
+      [journalArticle] (propia) Sección de la revista en la que aparece el artículo.
+      Tipos: bill, journalArticle, newspaperArticle, statute
+  series "Series"  [9]
+      Name of a series that contains multiple publications or presentations (e.g., "Cambridge Studies in
+      Comparative Politics", "Special issue on Advances in Personality Assessment").
+      Tipos: book, bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle, journalArticle,
+      preprint, presentation, thesis
+  seriesNumber "Series Number"  [8]
+      The number of an item in a series.
+      Tipos: book, bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle, preprint, report,
+      thesis
+  seriesText "Series Text"  [1]
+      (propia) Texto adicional de la serie (p. ej. "New series"), típico en revistas antiguas.
+      Tipos: journalArticle
+  seriesTitle "Series Title"  [7]
+      Title of a series of articles within one issue of a journal (e.g., a special section or "From the
+      Cover"). "Section Title" would likely be a more appropriate label. For citation purposes, this field is
+      currently equivalent to "Series" and is erroneously used instead of series in some item types (e.g.,
+      Audio Recording, Map).
+      Tipos: audioRecording, computerProgram, journalArticle, map, podcast, report, videoRecording
+  session "Session"  [3]
+      The session of a legislative body in which a bill was introduced, statute was passed, or hearing was
+      held.
+      Tipos: bill, hearing, statute
+  sessionTitle "Session Title"  [1]  -> base: publicationTitle
+      (propia) Título de la sesión o panel del congreso en que se hizo la presentación.
+      Tipos: presentation
+  status "Status"  [1]
+      The publication status of an item (e.g., "forthcoming", "in press", "advance online publication").
+      Tipos: standard
+  studio "Studio"  [1]  -> base: publisher
+      The studio producing a video recording.
+      Tipos: videoRecording
+  subject "Subject"  [1]  -> base: title
+      The title of an email.
+      Tipos: email
+  system "System"  [1]
+      The operating system or platform a computer program is written for.
+      Tipos: computerProgram
+  thesisType "Type"  [1]  -> base: type
+      The type of report (e.g., "Technical report", "CPTO Technical Brief") or thesis (e.g., "Doctoral
+      dissertation", "Ph.D. thesis", "Master thesis"; the word 'thesis' or 'dissertation' should be included
+      where applicable).
+      Tipos: thesis
+  type "Type"  [3]
+      [dataset] (propia) Tipo de conjunto de datos (p. ej. "Survey data", "Genomic sequence").
+      [document] (propia) Tipo de documento genérico (texto libre).
+      [standard] (propia) Tipo de norma (p. ej. "International Standard", "Technical Specification").
+      Tipos: dataset, document, standard
+  university "University"  [1]  -> base: publisher
+      The institution publishing a report or the university granting the degree for a thesis.
+      Tipos: thesis
+  versionNumber "Version"  [3]
+      [computerProgram] The version of a computer program.
+      [dataset] (propia) Versión del conjunto de datos.
+      [standard] (propia) Versión o revisión de la norma.
+      Tipos: computerProgram, dataset, standard
+  videoRecordingFormat "Format"  [3]  -> base: medium
+      The format of an audio or video recording (e.g. "DVD," "CD," "MP3," etc.).
+      Tipos: film, tvBroadcast, videoRecording
+  volume "Volume"  [10]
+      The volume of a (typically multi-volume) publication an article or chapter is published in. For numeric
+      volumes, enter only a number. If the volume should be cited with a volume title, include the title in
+      this field (e.g,. "2: Organizational Psychology").
+      Tipos: audioRecording, book, bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle,
+      journalArticle, magazineArticle, newspaperArticle, videoRecording
+  websiteTitle "Website Title"  [1]  -> base: publicationTitle
+      The title of the blog or website containing a post or specific web page.
+      Tipos: webpage
+  websiteType "Website Type"  [2]  -> base: type
+      Rarely used. Describes the genre of a webpage such as "personal blog" or "intranet".
+      Tipos: blogPost, webpage
+
+==============================================================================================================
+3. TIPOS DE CREADOR
+==============================================================================================================
+Debajo de cada uno, los tipos de ítem que lo admiten (* = es el rol principal de ese tipo).
+  artist "Artist"
+      The creator of a piece of artwork or a figure. The author for Artwork items.
+      Tipos: artwork*
+  attorneyAgent "Attorney/Agent"
+      The attorney or agent representing an inventor when filing a patent. [*no citable]
+      Tipos: patent
+  author "Author"
+      The principal author or creator of a work. Enter authors (and other creators) in the order that they
+      should be cited.
+      
+      Enter names of persons in two-field (Last/Family, First/Given) mode. Enter names of institutions or
+      organizations in one-field mode.
+      Tipos: blogPost*, book*, bookSection*, case*, conferencePaper*, dataset*, dictionaryEntry*, document*,
+      email*, encyclopediaArticle*, forumPost*, instantMessage*, journalArticle*, letter*, magazineArticle*,
+      manuscript*, newspaperArticle*, preprint*, report*, standard*, statute*, thesis*, webpage*
+  bookAuthor "Book Author"
+      (propia) Autor del libro completo cuando se cita una sección escrita por otra persona.
+      Tipos: bookSection
+  cartographer "Cartographer"
+      The principal creator of a map. The author for Map item.
+      Tipos: map*
+  castMember "Cast Member"
+      A member of the cast of a broadcast or performance. [*no citable]
+      Tipos: film, podcast, radioBroadcast, tvBroadcast, videoRecording
+  chair "Chair"
+      (propia) Presidente o moderador de la sesión de un congreso.
+      Tipos: presentation
+  commenter "Commenter"
+      An individual commenting on a blog post. [*no citable]
+      Tipos: blogPost
+  composer "Composer"
+      The composer of the music on an audio recording.
+      Tipos: audioRecording
+  contributor "Contributor"
+      Other individuals or entities associated with a work that should not be included in citations (e.g.,
+      individuals listed after "with" on a book's cover). Used as the author for Hearing items. [*no citable]
+      Tipos: artwork, audioRecording, bill, blogPost, book, bookSection, case, computerProgram,
+      conferencePaper, dataset, dictionaryEntry, document, email, encyclopediaArticle, film, forumPost,
+      hearing*, instantMessage, interview, journalArticle, letter, magazineArticle, manuscript, map,
+      newspaperArticle, patent, podcast, preprint, presentation, radioBroadcast, report, standard, statute,
+      thesis, tvBroadcast, videoRecording, webpage
+  cosponsor "Cosponsor"
+      Cosponsors or endorsers of a bill or piece of legislation. [*no citable]
+      Tipos: bill
+  counsel "Counsel"
+      The counsel arguing a legal case. [*no citable]
+      Tipos: case
+  creator "Creator"
+      (propia) Creador genérico de un conjunto de datos o software (rol principal de dataset).
+      Tipos: radioBroadcast*, videoRecording*
+  director "Director"
+      The director of a broadcast or recording. The author for Film Recording, Video Recording, Radio
+      Broadcast, and TV Broadcast items.
+      Tipos: film*, podcast, radioBroadcast, tvBroadcast*, videoRecording
+  editor "Editor"
+      The editor of an item or the broader publication an item is part of (e.g., book, journal). If a
+      distinction is drawn between the textual editor and the managing editor/publishing editor/editorial
+      director (Directeur de la Publication in French), use editor for the textual editor and enter Editorial
+      Director in Extra. See Citing Fields from Extra below.
+      Tipos: book, bookSection, conferencePaper, dictionaryEntry, document, encyclopediaArticle,
+      journalArticle, preprint, report, standard
+  executiveProducer "Executive Producer"
+      (propia) Productor ejecutivo de una serie o emisión.
+      Tipos: podcast, radioBroadcast, tvBroadcast, videoRecording
+  guest "Guest"
+      A guest on a podcast, radio broadcast, or TV broadcast. [*no citable]
+      Tipos: film, podcast, radioBroadcast, tvBroadcast, videoRecording
+  host "Host"
+      (propia) Presentador o conductor de un programa de radio/TV.
+      Tipos: film, radioBroadcast, tvBroadcast, videoRecording
+  interviewee "Interview With"
+      The person being interviewed. The author for Interview items.
+      Tipos: interview*
+  interviewer "Interviewer"
+      The person asking questions during an interview.
+      Tipos: interview
+  inventor "Inventor"
+      The creator of an invention. The author for Patent items.
+      Tipos: patent*
+  narrator "Narrator"
+      (propia) Narrador de una grabación (p. ej. audiolibro).
+      Tipos: film, tvBroadcast, videoRecording
+  organizer "Organizer"
+      (propia) Organizador del congreso o reunión.
+      Tipos: presentation
+  originalCreator "Original Creator"
+      A type of Creator. The original creator of a work.
+      Tipos: audioRecording
+  performer "Performer"
+      The individual performing on an audio recording. The author for Audio Recording items.
+      Tipos: audioRecording*
+  podcaster "Podcaster"
+      The host of a podcast. The author for Podcast items.
+      Tipos: podcast*
+  presenter "Presenter"
+      The person giving a presentation. The author for Presentation items.
+      Tipos: presentation*
+  producer "Producer"
+      A producer for a film, recording, or broadcast. [*no citable]
+      Tipos: film, podcast, radioBroadcast, tvBroadcast, videoRecording
+  programmer "Programmer"
+      The programmer for a computer program. The author for Computer Program items.
+      Tipos: computerProgram*
+  recipient "Recipient"
+      The person receiving a letter, email, or message.
+      Tipos: email, instantMessage, letter
+  reviewedAuthor "Reviewed Author"
+      The name of the author whose work is being reviewed.
+      Tipos: document, journalArticle, magazineArticle, newspaperArticle, preprint
+  scriptwriter "Scriptwriter"
+      The person writing the script for a film or broadcast. [*no citable]
+      Tipos: film, podcast, radioBroadcast, tvBroadcast, videoRecording
+  seriesCreator "Series Creator"
+      (propia) Creador de la serie de TV/radio/podcast a la que pertenece el episodio.
+      Tipos: podcast, radioBroadcast, tvBroadcast
+  seriesEditor "Series Editor"
+      The overseeing editor of a series of items.
+      Tipos: book, bookSection, conferencePaper, dictionaryEntry, encyclopediaArticle, map, report
+  sponsor "Sponsor"
+      The principal author of a bill or piece of legislation. The author for Bill and Legislation items.
+      Tipos: bill*
+  translator "Translator"
+      The translator of an item. If the same person is both the editor and translator of a work, enter their
+      name as both an Editor and a Translator in separate fields.
+      Tipos: audioRecording, blogPost, book, bookSection, conferencePaper, dictionaryEntry, document, email,
+      encyclopediaArticle, film, interview, journalArticle, letter, magazineArticle, manuscript,
+      newspaperArticle, podcast, preprint, presentation, radioBroadcast, report, tvBroadcast, videoRecording,
+      webpage
+  wordsBy "Words By"
+      The individual who wrote the words in an audio recording (e.g., the lyricist or speechwriter). [*no
+      citable]
+      Tipos: audioRecording
+
+==============================================================================================================
+4. CAMPOS BASE (equivalencias entre tipos)
+==============================================================================================================
+Zotero define campos base: varios campos con nombre propio en un tipo son "el mismo" dato en otro.
+Al cambiar el tipo de un ítem, el valor pasa de la variante al campo base y viceversa; también se usan para
+buscar y para exportar a CSL. Formato: base "Etiqueta" <- tipo: variante.
+  authority "Authority" (no se usa tal cual en ningún tipo)
+      <- bill: legislativeBody
+      <- case: court
+      <- hearing: legislativeBody
+      <- patent: issuingAuthority
+      <- standard: organization
+  date "Date" (también se usa tal cual en 34 tipos)
+      <- case: dateDecided
+      <- patent: issueDate
+      <- statute: dateEnacted
+  medium "Medium" (no se usa tal cual en ningún tipo)
+      <- artwork: artworkMedium
+      <- audioRecording: audioRecordingFormat
+      <- book: format
+      <- bookSection: format
+      <- dataset: format
+      <- film: videoRecordingFormat
+      <- interview: interviewMedium
+      <- podcast: audioFileType
+      <- radioBroadcast: audioRecordingFormat
+      <- tvBroadcast: videoRecordingFormat
+      <- videoRecording: videoRecordingFormat
+  number "Number" (también se usa tal cual en 2 tipos)
+      <- bill: billNumber
+      <- case: docketNumber
+      <- dataset: identifier
+      <- hearing: documentNumber
+      <- patent: patentNumber
+      <- podcast: episodeNumber
+      <- preprint: archiveID
+      <- radioBroadcast: episodeNumber
+      <- report: reportNumber
+      <- statute: publicLawNumber
+      <- tvBroadcast: episodeNumber
+  originalDate "Original Date" (también se usa tal cual en 2 tipos)
+      <- patent: priorityDate
+  pages "Pages" (también se usa tal cual en 11 tipos)
+      <- bill: codePages
+      <- case: firstPage
+  place "Place" (también se usa tal cual en 27 tipos)
+      <- dataset: repositoryLocation
+  publicationTitle "Publication" (también se usa tal cual en 3 tipos)
+      <- blogPost: blogTitle
+      <- bookSection: bookTitle
+      <- conferencePaper: proceedingsTitle
+      <- dictionaryEntry: dictionaryTitle
+      <- encyclopediaArticle: encyclopediaTitle
+      <- forumPost: forumTitle
+      <- presentation: sessionTitle
+      <- radioBroadcast: programTitle
+      <- tvBroadcast: programTitle
+      <- webpage: websiteTitle
+  publisher "Publisher" (también se usa tal cual en 15 tipos)
+      <- audioRecording: label
+      <- computerProgram: company
+      <- dataset: repository
+      <- film: distributor
+      <- manuscript: institution
+      <- preprint: repository
+      <- radioBroadcast: network
+      <- report: institution
+      <- thesis: university
+      <- tvBroadcast: network
+      <- videoRecording: studio
+  status "Status" (también se usa tal cual en 1 tipos)
+      <- patent: legalStatus
+  title "Title" (también se usa tal cual en 35 tipos)
+      <- case: caseName
+      <- email: subject
+      <- statute: nameOfAct
+  type "Type" (también se usa tal cual en 3 tipos)
+      <- blogPost: websiteType
+      <- film: genre
+      <- forumPost: postType
+      <- letter: letterType
+      <- manuscript: manuscriptType
+      <- map: mapType
+      <- preprint: genre
+      <- presentation: presentationType
+      <- report: reportType
+      <- thesis: thesisType
+      <- webpage: websiteType
+  volume "Volume" (también se usa tal cual en 10 tipos)
+      <- bill: codeVolume
+      <- case: reporterVolume
+
+==============================================================================================================
+5. TIPOS Y CAMPOS CITABLES QUE ZOTERO NO TIENE (van en Extra)
+==============================================================================================================
+La página indica escribirlos en Extra, una línea por variable, como "Variable CSL: valor"
+(p. ej. "Type: musical_score", "Original Date: 1886-04-01", "Director: Kubrick || Stanley").
+Salvo el tipo y las fechas, lo escrito en Extra no sobrescribe campos propios del ítem. Las fechas van en ISO
+(año-mes-día); los rangos, con barra. Los nombres en dos partes se separan con "||".
+
+5.1 Tipos de ítem
+-----------------
+  Figure  (CSL: figure)
+      A figure included in a scientific or academic work.
+  Musical Score  (CSL: musical_score)
+      The written score for a musical work.
+  Pamphlet  (CSL: pamphlet)
+      An informally-published work. Typically smaller and less technical than a Report.
+  Book Review  (CSL: review-book)
+      A review of a book. Enter these as Journal, Magazine, or Newspaper Article, depending on where they were
+      published, by providing a "Reviewed Author" creator.
+  Treaty  (CSL: treaty)
+      A legal treaty between two nations.
+
+5.2 Campos y creadores
+----------------------
+  Varios de esta lista ya existen como campos en el esquema 45 (PMID, PMCID, Status, Event Place, Original Date,
+  Original Publisher, Original Publisher Place -> originalPlace, Original Author -> originalCreator), pero solo
+  en algunos tipos; en los demás siguen yendo en Extra.
+  PMID  (CSL: PMID)
+      The PubMed identifier.
+  PMCID  (CSL: PMCID)
+      The PubMed Central identifier.
+  Status  (CSL: Status)
+      The publication status of an item (e.g., "forthcoming", "in press", "advance online publication").
+  Submitted Date  (CSL: Submitted)
+      The date an item was submitted for publication.
+  Reviewed Title  (CSL: Reviewed Title)
+      The title of a reviewed work.
+  Chapter Number  (CSL: Chapter Number)
+      The number of the chapter within a book.
+  Archive Place  (CSL: Archive Place)
+      The geographic location of an archive.
+  Event Date  (CSL: Event Date)
+      The date an event took place. Enter in ISO format (year-month-day).
+  Event Place  (CSL: Event Place)
+      The geographic location of an event.
+  Original Date  (CSL: Original Date)
+      The original date an item was published. Enter in ISO format (year-month-day).
+  Original Title  (CSL: Original Title)
+      The original title of a work (e.g., the untranslated title).
+  Original Publisher  (CSL: Original Publisher)
+      The publisher of the original version of an item (e.g., the untranslated version).
+  Original Publisher Place  (CSL: Original Publisher Place)
+      The geographic location of the publisher of the original version of an item (e.g., the untranslated
+      version).
+  Original Author  (CSL: Original Author)
+      A type of Creator. The original creator of a work.
+  Director  (CSL: Director)
+      A type of Creator. The director of a film, recording, or broadcast. In Zotero, "Director" is mapped to
+      CSL author. If you need special labels for directors—"(Dir.)", enter the Director label in Extra.
+  Editorial Director  (CSL: Editorial Director)
+      A type of Creator. The managing editor of a publication ("Directeur de la Publication" in French).
+  Illustrator  (CSL: Illustrator)
+      A type of Creator. The illustrator of a work.
+
+==============================================================================================================
+6. NOTAS PARA EL REDISEÑO DE LA BASE DE DATOS
+==============================================================================================================
+  - Relación muchos a muchos: item_type_fields(item_type, field, orden) y item_type_creators(item_type,
+    creator_type, es_principal). El orden importa: es el del formulario.
+  - Los campos base (§4) sugieren guardar el valor bajo el campo base y la variante como etiqueta por tipo
+    (así, al cambiar de tipo, no se pierde nada).
+  - Un mismo campo puede tener significado distinto según el tipo (type, place, section, history,
+    versionNumber, committee, number, genre, institution): conviene que la descripción/ayuda viva en la
+    relación tipo-campo y no solo en el campo.
+  - Las partituras no tienen tipo propio en Zotero: la página propone usar otro tipo y "Type: musical_score"
+    en Extra. El PoC ya usa document + "Tipo: partitura" en extra; habrá que decidir cuál seguir.
+  - Item Type, Creators, Date Added y Date Modified son propiedades del ítem, no filas de campos.
+  - attachment, note y annotation no son tipos bibliográficos: probablemente no hacen falta en la biblioteca.

@@ -56,7 +56,7 @@ Duplicates are detected by file hash, DOI, ISBN and similar title/author/year. F
 
 **Offline.** The client keeps a local cache of opened PDFs (2 GB by default, least-recently-used eviction). Files marked "Keep offline" are never evicted. Without a connection, the app shows what is saved on the device.
 
-**Administer.** Admins manage users and roles (admin, editor, viewer). They can also extend resource types and fields at runtime, without code changes.
+**Administer.** Admins manage users and roles (admin, editor, viewer). Item types and fields are not edited in the app: they come from Zotero's official schema (see *Data model*).
 
 ## Design principles
 
@@ -90,7 +90,8 @@ Duplicates are detected by file hash, DOI, ISBN and similar title/author/year. F
 │   │   ├── pdfutil.py           page count, cover rendering, text extraction (PyMuPDF)
 │   │   ├── textutil.py          accent folding, regex/whole-word search, highlighting
 │   │   ├── udc.py               locating notations in the tree
-│   │   ├── udc_import.py        loads udcs-skos.rdf into the database
+│   │   ├── udc_import.py        loads udc_data/udcs-skos.rdf into the database
+│   │   ├── udc_data/            udcs-skos.rdf: the full UDC tree (written by the tree fusion)
 │   │   ├── maintenance.py       trash purge, tmp cleanup, backups (every 6 h)
 │   │   ├── create_admin.py      create / reset the admin account
 │   │   └── install_server.bat, run_server.bat
@@ -105,21 +106,20 @@ Duplicates are detected by file hash, DOI, ISBN and similar title/author/year. F
 │   ├── config.py                every tunable: models, thresholds, weights, Zotero types, aliases
 │   ├── udcpoc/                  the package (see "How the AI classifier works")
 │   ├── tests/                   unit tests with a synthetic UDC tree and fake embedder
-│   ├── data/                    udcs-skos.rdf, embedding index, feedback.db
+│   ├── data/                    embedding index, feedback.db (reads the RDF from the server's udc_data/)
 │   └── output/                  results.json, sample_plan.csv, gold.csv
 │
-├── udc_to_rdf_conversion/       BUILDS THE FULL UDC TREE AS SKOS/RDF
+├── udc_to_rdf_conversion/       MAINTAINS THE FULL UDC TREE (SKOS/RDF)
 │   ├── README.md                (Spanish)
-│   ├── udc_merge.py             merges a text tree (structure or labels) into the RDF
-│   ├── udc_export_txt.py        exports the RDF back to indented text
+│   ├── udc_main_tree_fusion.py  the entry point: snapshot -> tree, notes, cancellations -> server/udc_data/udcs-skos.rdf
+│   ├── udc_export_txt.py        exports the RDF back to indented text (checks, translation review)
 │   ├── extra_notes.json         hand-written notes and node types
-│   ├── UDC_hierarchy.txt        full English tree (source of the structure)
-│   ├── udcs-skos.(1)rdf         original UDC Summary (CC BY-SA 3.0)
-│   ├── udcs-skos.rdf            RESULT: ~71,800 classes, used by the server and the PoC
-│   └── conversion_report.txt    report of the last run
+│   ├── tree_decisions.json      exceptions to the automatic placement of missing classes
+│   ├── modules/                 udc_merge.py, udc_records.py, udc_cancelled.py: the steps the fusion uses
+│   └── generated/               intermediate output of the last fusion (text tree, JSON, reports)
 │
-└── udc_tree_download/           browser-console scripts that export the tree and class
-                                 records from UDC Online (requires your own login)
+└── udc_tree_download/           udc_tree_download.js: browser-console downloader of the whole of
+                                 UDC Online into one snapshot file (requires your own login)
 ```
 
 **Not in the repository** (see `.gitignore`):
@@ -166,23 +166,28 @@ flowchart LR
 |---|---|
 | Auth | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
 | Users (admin) | CRUD, role changes, password reset, disable |
-| Schema | resource types, field definitions, stats |
+| Schema | `GET /schema?lang=` (Zotero item types, their fields in Zotero's order, creator roles), stats |
 | UDC | `GET /udc/tree` (all nodes with item counts, gzip-compressed: 8.9 MB → 1.5 MB), `GET /udc/node?code=…` (notes, ancestors, "See also") |
-| Items | search/list with highlight offsets; `GET` file, cover, preview pages; edit; delete → trash; restore; purge |
+| Items | search/list with highlight offsets (a base field also searches its variants); `GET` file, cover, preview pages; edit; type change (`POST /convert-type`, `POST /items/{id}/type`); automatic values that respect confirmed ones (`POST /items/{id}/auto`, `/autofill`); delete → trash; restore; purge |
+| Supplementary material, notes | `POST /items/{id}/attachments`, `PATCH`/`DELETE /attachments/{id}`, `PUT /items/{id}/attachments/order`, `GET /attachments/{id}/file`; `POST /items/{id}/notes`, `PUT`/`DELETE /notes/{id}` |
 | Upload | two steps: `POST /uploads` returns a temp ID, hash, page count, extracted metadata and possible duplicates; `POST /items` commits it with `duplicate_action` = `check` / `keep_both` / `replace` |
 | Autofill | from DOI, ISBN or arXiv ID |
 
 ## Data model
 
-The database is `data/biblioteca.db`, which sits next to the files in `data/library/`, `covers/`, `trash/`, `tmp/` and `backups/`.
+The database is `data/biblioteca.db`, which sits next to the files in `data/library/`, `covers/`, `trash/`, `tmp/` and `backups/`. Item data follows Zotero: the catalog is built from Zotero's official `schema.json` (version 45, copied unchanged into `server/zotero/`) plus a small `zotero_overlay.json` (enabled types, help texts, control kinds), synced at startup. All 37 Zotero types are seeded; 20 are enabled in v1. Every value is a row with its provenance, and SQLite triggers reject a field or creator role the item's type does not allow.
 
 | Table | Purpose |
 |---|---|
 | `users` | username, PBKDF2-SHA256 hash, role (`admin` / `editor` / `viewer`), enabled flag |
 | `sessions` | hashed session tokens (60-day lifetime) |
-| `item_types`, `field_defs` | resource types and their fields, extensible at runtime by an admin |
-| `items` | `citekey`, `item_type`, `title`, `year`, `language`, `udc` (full notation string, e.g. `004.8:61`), `creators` (JSON), `data` (JSON, every other field), `filename`, `sha256`, `size`, `pages`, `cover_page`, `added_at`, `modified_at`, `added_by`, `deleted_at` (trash) |
-| `item_udc` | many-to-many link between items and tree nodes; `node_code` is the longest prefix of `code` that exists in the tree |
+| `item_types`, `fields`, `item_type_fields`, `creator_types`, `item_type_creators` | the Zotero catalog: types, fields (with kind and help), which fields each type has in which order and through which base field (`university` → `publisher`), creator roles and the primary role of each type. Written only by the sync |
+| `items` | `citekey` (also the file name and Zotero's `citationKey`), `item_type`, derived sort/filter columns (`sort_title`, `sort_creator`, `date_sort`, `year`, `language`), added/modified by and when, `deleted_at` (trash) |
+| `item_fields` | one row per value: `value`, `norm` (ISO date, ISBN-13, lower-case DOI, language code), `source` (manual, crossref, pdfmeta, classifier...), `confidence`, `confirmed` |
+| `item_creators` | ordered creators with role, name (two fields or one, for organizations) and provenance |
+| `attachments` | one main file per item (gives the cover) and labelled supplementary files (PDF in v1) |
+| `tags` / `item_tags`, `item_notes` | tags (with source) and free notes |
+| `item_udc` / `item_udc_nodes` | the item's UDC notations (position 0 = main; source `manual` or `classifier`) and, derived from them, every tree node they touch, auxiliaries included (`94(460)"18"` → `94`, `(460)`, `"18"`) |
 | `udc_nodes` | `code`, `parent`, `labels` (JSON per language), `ord` (tree order), `node_type` (`heading` = group heading without notation; `info` = informative, not assignable), `notes` (JSON: scope, application, including, examples, related) |
 | `meta` | key/value settings and schema version |
 
@@ -218,10 +223,10 @@ Without this step the app only shows the ten main classes (0–9).
 
 ```bat
 set BUDC_DATA_DIR=...      :: only if you changed it
-.venv\Scripts\python.exe udc_import.py ..\..\udc_to_rdf_conversion\udcs-skos.rdf --langs en
+.venv\Scripts\python.exe udc_import.py --langs en,es
 ```
 
-This replaces the tree and re-links existing items. Re-run it whenever the RDF is regenerated.
+It reads `server/udc_data/udcs-skos.rdf` (where the tree fusion writes it), replaces the tree and re-links existing items. Re-run it after every fusion.
 
 ### 3. Client app
 
@@ -278,23 +283,25 @@ The first `index` run downloads `BAAI/bge-m3` (~2.3 GB). If it is too slow on CP
 
 The open **UDC Summary** contains only about 2,400 classes, with labels in English, Finnish and Swedish (no Spanish), and very few special auxiliaries. To use the full depth of the classification, the tree was rebuilt:
 
-1. **Export.** The scripts in `udc_tree_download/` run in the browser console of a logged-in UDC Online session.
-   - `algorithm.js` exports the full English hierarchy to `UDC_hierarchy.txt`: one node per line, 4-space indentation, group headings marked with dashes.
-   - `record_download.js` downloads each class record (notes, "Including", combination examples, "See also") in resumable `.jsonl.gz` parts.
-2. **Merge.** `udc_to_rdf_conversion/udc_merge.py` merges the text tree into the Summary's SKOS file:
-   - it creates new nodes, moves the ones whose parent changed and keeps the sibling order;
-   - it carries over the Summary's notes and applies `extra_notes.json` plus any parsed records;
-   - it writes `conversion_report.txt`.
+1. **Download.** `udc_tree_download/udc_tree_download.js` runs in the browser console of a logged-in UDC Online session and saves one file, `udc_snapshot_YYYY-MM-DD.json.gz`, with:
+   - the full hierarchy, sibling order and labels;
+   - every class record: notes, "Including", combination examples (◇), "See also" and auxiliary type;
+   - cancelled classes (year, E&C issue, replacements) and the list of live notations.
 
-   The result is `udcs-skos.rdf`, with **71,811 classes**. 2,425 of them inherited notes from the Summary, and 27 obsolete Summary notations were dropped.
-3. **Add a language later.**
+   It resumes after a reload or an expired session, and does not depend on the interface language.
+2. **Fusion.** `udc_to_rdf_conversion/udc_main_tree_fusion.py <snapshot>` turns the snapshot into `UDC_hierarchy.txt`, `udc_records.json` and `udc_cancelled.json` (intermediate files in `generated/`), and merges them into `biblioteca_udc/server/udc_data/udcs-skos.rdf` with `modules/udc_merge.py`:
+   - it creates new nodes, moves the ones whose parent changed and keeps the sibling order;
+   - live classes that the site's tree omits are placed by their notation (tightest containing range, else longest prefix); exceptions go in `tree_decisions.json`;
+   - it applies `extra_notes.json` last and writes `fusion_report.txt`.
+
+   The result is `udcs-skos.rdf` with **71,867 classes**, their notes and **12,309 cancellations** (kept outside the hierarchy). The first conversion started from the UDC Summary: 2,425 classes inherited its notes and 27 obsolete Summary notations were dropped.
+3. **Add a language later.** Download a snapshot from a session in that language and run the fusion with `--lang xx`: it adds `@xx` labels and notes without changing the hierarchy. A plain text tree also works:
    ```
-   python udc_merge.py --rdf udcs-skos.rdf --txt UDC_hierarchy_xx.txt --lang xx
+   python modules/udc_merge.py --rdf ../biblioteca_udc/server/udc_data/udcs-skos.rdf --txt UDC_hierarchy_xx.txt --lang xx
    ```
-   This matches nodes by notation and adds the labels without changing the hierarchy.
 4. **Check the result.** `udc_export_txt.py` turns the RDF back into text so you can diff it or review translations.
 
-Both scripts use only the Python standard library.
+All of these use only the Python standard library.
 
 ## How the AI classifier works
 
@@ -321,13 +328,13 @@ PDF ─► pdfio      first 6 + last 3 pages, font sizes, TOC, scanned-page dete
 
 Classification uses beam search plus neighbours, not a greedy descent, so an early mistake at a high level of the tree does not propagate.
 
-**Metadata types.** Zotero's item types serve as the universal schema: `book`, `journalArticle`, `conferencePaper`, `thesis`, `report`, `patent`, `preprint`, `standard` and `document`. Music scores are stored as `document` with `Tipo: partitura` in `extra`.
+**Metadata types.** The PoC reads the same Zotero `schema.json` and overlay as the server, so it proposes only the 20 enabled types, with detection rules for each. Following Zotero's guidelines, music scores are a `book` (or `manuscript`) with `Type: musical_score` in `extra`; without clear signals the proposed type is `book` (Zotero discourages `document`).
 
 ## Project status
 
 | Component | State |
 |---|---|
-| Server | Running on the target PC. Full flow exercised manually: login, upload, search, open. No automated tests; not yet tested at volume (~130 PDFs) or on edge cases (replace, trash, roles, storage limit). Pure logic (citation keys, identifier extraction, search, duplicates, tree counts, catalogue parsing) was tested in isolation. |
+| Server | Running on the target PC with the previous schema. The Zotero schema (November 2026) has 25 pytest tests (catalog, triggers, provenance, type change, supplementary files, duplicates, search, trash) and was exercised against the real tree; it is not yet deployed. It is the definitive schema: the old database is not migrated but recreated. Not yet tested at volume (~130 PDFs). |
 | UDC importer | Tested with the real 71,811-class RDF (862 classes with notes, headings and order correct). |
 | Flutter app | Works on Windows and on Android 15 (Xiaomi 12). Passes `flutter analyze`. Android startup crash fixed by pinning `path_provider_android: 2.2.23`. |
 | UDC tree in the app | **Known bug:** the hierarchy displayed in the app is wrong. To be fixed by porting the PoC's tree parser to the server. |
@@ -336,11 +343,11 @@ Classification uses beam search plus neighbours, not a greedy descent, so an ear
 
 ### Open design conflicts between the app and the PoC
 
-1. **Resource types.** The app uses `book / chapter / article / thesis / patent / report / other`. The PoC uses Zotero types with per-field provenance. The app will migrate to the PoC's model.
+1. ~~**Resource types.**~~ Resolved: server, app and PoC use Zotero's schema with per-field provenance.
 2. **Label language.** The app's settings offer Spanish class names, but the tree has English labels only. The option should be removed or backed by a custom translation.
 3. **Tree parsing.** Replace the server's importer logic with the PoC's corrected `tree.py`, which also classifies auxiliary tables.
-4. **Composite notations.** The server's `udc.py` locates items using only main-table numbers. Replace it with the PoC's `notation.py`.
-5. **Autofill.** The app currently overwrites form fields with catalogue data. The PoC's rule is: never overwrite manual input, and record the source of each field.
+4. ~~**Composite notations.**~~ Resolved: the server places items with the PoC's notation tokenizer, auxiliaries included.
+5. ~~**Autofill.**~~ Resolved: values carry their source, and automatic values never overwrite confirmed ones.
 
 ## Roadmap
 
@@ -369,6 +376,6 @@ Near-term tasks, in order:
 ## Licensing and attribution
 
 - **UDC Summary** © UDC Consortium, licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). The app shows this attribution in its *About* screen.
-- **Full UDC tree and class records** (`UDC_hierarchy.txt`, `udc_to_rdf_conversion/udcs-skos.rdf`, the saved UDC Online page and the embedding index built from them) are © UDC Consortium and come from a UDC Online subscription. They are **not** openly licensed. They are kept in this repository for private use only. Do not make the repository public or redistribute these files without the consortium's permission.
+- **Full UDC tree and class records** (`biblioteca_udc/server/udc_data/`, the snapshots and the embedding index built from them) are © UDC Consortium and come from a UDC Online subscription. They are **not** openly licensed. They are kept in this repository for private use only. Do not make the repository public or redistribute these files without the consortium's permission.
 - **PDFs** are not part of the repository.
 - **Project code:** no license has been chosen yet; all rights reserved by the author.

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
@@ -55,10 +56,10 @@ class _ProgressDialog extends StatelessWidget {
       );
 }
 
-/// Makes sure a local copy exists (showing progress if a download is needed).
-Future<String?> _localCopy(BuildContext context, Item item) async {
+/// Makes sure a local copy of the main file (or of [att]) exists, showing progress if a download is needed.
+Future<String?> _localCopy(BuildContext context, Item item, [Attachment? att]) async {
   final state = context.read<AppState>();
-  final needs = !state.cache.isFresh(item);
+  final needs = !state.cache.isFresh(item, att);
   final progress = ValueNotifier<double?>(null);
   var dialogOpen = false;
   if (needs) {
@@ -67,7 +68,7 @@ Future<String?> _localCopy(BuildContext context, Item item) async {
       context: context,
       barrierDismissible: false,
       useRootNavigator: true,
-      builder: (_) => _ProgressDialog(progress: progress, title: item.title),
+      builder: (_) => _ProgressDialog(progress: progress, title: att == null ? item.title : '${item.title}: ${att.label}'),
     );
   }
   void closeDialog() {
@@ -79,6 +80,7 @@ Future<String?> _localCopy(BuildContext context, Item item) async {
 
   try {
     final r = await state.cache.ensure(state.api, item,
+        att: att,
         onProgress: (got, total) => progress.value = total > 0 ? got / total : null);
     closeDialog();
     if (r.stale && context.mounted) {
@@ -97,8 +99,9 @@ Future<String?> _localCopy(BuildContext context, Item item) async {
   }
 }
 
-Future<void> openItem(BuildContext context, Item item) async {
-  final path = await _localCopy(context, item);
+/// Opens the main file, or the supplementary file [att].
+Future<void> openItem(BuildContext context, Item item, [Attachment? att]) async {
+  final path = await _localCopy(context, item, att);
   if (path == null) return;
   final err = await launchPdf(path);
   if (err != null && context.mounted) {
@@ -106,16 +109,16 @@ Future<void> openItem(BuildContext context, Item item) async {
   }
 }
 
-Future<void> togglePin(BuildContext context, Item item) async {
+Future<void> togglePin(BuildContext context, Item item, [Attachment? att]) async {
   final cache = context.read<AppState>().cache;
-  if (cache.isPinned(item.id)) {
-    await cache.setPinned(item.id, false);
+  if (cache.isPinned(item, att)) {
+    await cache.setPinned(item, false, att);
     if (context.mounted) toast(context, 'No longer kept offline.');
     return;
   }
-  final path = await _localCopy(context, item);
+  final path = await _localCopy(context, item, att);
   if (path == null) return;
-  await cache.setPinned(item.id, true);
+  await cache.setPinned(item, true, att);
   if (context.mounted) toast(context, 'Kept offline on this device.');
 }
 
@@ -141,4 +144,128 @@ Future<void> deleteItemFlow(BuildContext context, Item item) async {
   } on ApiException catch (e) {
     if (context.mounted) toast(context, e.message, error: true);
   }
+}
+
+// ---------------------------------------------------------------------- supplementary material and notes
+/// Asks for one line (or several, [multiline]) of text. Returns null on Cancel.
+Future<String?> askText(BuildContext context,
+    {required String title, String label = '', String initial = '', String ok = 'Save', bool multiline = false}) async {
+  final ctl = TextEditingController(text: initial);
+  final r = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 460,
+        child: TextField(
+          controller: ctl,
+          autofocus: true,
+          minLines: multiline ? 4 : 1,
+          maxLines: multiline ? 12 : 1,
+          decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+          onSubmitted: multiline ? null : (v) => Navigator.pop(ctx, v),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: Text(ok)),
+      ],
+    ),
+  );
+  ctl.dispose();
+  return r;
+}
+
+Future<void> _updateItem(BuildContext context, Future<Item> Function() call, String done) async {
+  final state = context.read<AppState>();
+  try {
+    final item = await call();
+    state.itemUpdated(item);
+    if (context.mounted) toast(context, done);
+  } on ApiException catch (e) {
+    if (context.mounted) toast(context, e.message, error: true);
+  }
+}
+
+/// Adds a PDF as supplementary material (errata, solutions manual, parts...) with a label.
+Future<void> addSupplementaryFlow(BuildContext context, Item item) async {
+  final state = context.read<AppState>();
+  final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+  final file = res?.files.single;
+  if (file?.path == null || !context.mounted) return;
+  final label = await askText(context,
+      title: 'Supplementary file', label: 'Label (e.g. Errata, Solutions manual, Parts)', ok: 'Add');
+  if (label == null || label.trim().isEmpty || !context.mounted) {
+    if (label != null && context.mounted) toast(context, 'A supplementary file needs a label.', error: true);
+    return;
+  }
+  toast(context, 'Uploading ${file!.name}...');
+  await _updateItem(context, () async {
+    final up = await state.api.upload(file.path!, file.name);
+    return state.api.addAttachment(item.id, up['temp_id'] as String, label.trim());
+  }, 'Supplementary file added.');
+  await state.refreshAfterChange(); // storage use changed
+}
+
+Future<void> renameSupplementaryFlow(BuildContext context, Item item, Attachment att) async {
+  final label = await askText(context, title: 'Change label', label: 'Label', initial: att.label);
+  if (label == null || label.trim().isEmpty || label.trim() == att.label || !context.mounted) return;
+  await _updateItem(context, () => context.read<AppState>().api.renameAttachment(att.id, label.trim()), 'Label changed.');
+}
+
+Future<void> moveSupplementary(BuildContext context, Item item, Attachment att, int delta) async {
+  final ids = [for (final a in item.supplementary) a.id];
+  final i = ids.indexOf(att.id);
+  final j = i + delta;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  ids[i] = ids[j];
+  ids[j] = att.id;
+  await _updateItem(context, () => context.read<AppState>().api.orderAttachments(item.id, ids), 'Order changed.');
+}
+
+Future<void> trashSupplementaryFlow(BuildContext context, Item item, Attachment att) async {
+  final state = context.read<AppState>();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Move to trash?'),
+      content: Text('"${att.label}" will be removed from this item and kept in the trash for '
+          '${state.stats?['trash_days'] ?? 30} days.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Move to trash')),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  await _updateItem(context, () async {
+    await state.api.trashAttachment(att.id);
+    await state.cache.removeAttachment(item, att);
+    return state.api.getItem(item.id);
+  }, 'Moved to trash.');
+}
+
+Future<void> editNoteFlow(BuildContext context, Item item, [ItemNote? note]) async {
+  final body = await askText(context,
+      title: note == null ? 'New note' : 'Edit note', initial: note?.body ?? '', multiline: true);
+  if (body == null || body.trim().isEmpty || !context.mounted) return;
+  final api = context.read<AppState>().api;
+  await _updateItem(
+      context, () => note == null ? api.addNote(item.id, body.trim()) : api.editNote(note.id, body.trim()), 'Note saved.');
+}
+
+Future<void> deleteNoteFlow(BuildContext context, Item item, ItemNote note) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete note?'),
+      content: const Text('The note is deleted for good.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  await _updateItem(context, () => context.read<AppState>().api.deleteNote(note.id), 'Note deleted.');
 }

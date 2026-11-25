@@ -90,44 +90,55 @@ def classify_notation(n: str) -> str:
 
 # ------------------------------------------------------------------ lectura de tripletas
 def _triples_rdflib(path):
+    """Cualquier sintaxis RDF. El orden de un grafo de rdflib cambia en cada ejecución (hash aleatorio de
+    Python), así que se ordenan las tripletas: el árbol y su huella deben salir idénticos siempre."""
     import rdflib
     g = rdflib.Graph()
     try:
         g.parse(str(path), format="xml")
     except Exception:
         g.parse(str(path))
+    out = []
     for s, p, o in g:
-        if isinstance(o, rdflib.Literal):
-            yield str(s), str(p), str(o), (o.language or "")
-        else:
-            yield str(s), str(p), str(o), None
+        lang = (o.language or "") if isinstance(o, rdflib.Literal) else None
+        out.append((str(s), str(p), str(o), lang))
+    out.sort(key=lambda t: (t[0], t[1], t[3] or "", t[2]))
+    yield from out
 
 
 def _triples_et(path):
-    """Respaldo sin rdflib (RDF/XML plano). Solo se usa si rdflib no está instalado."""
+    """RDF/XML plano (como el de udc_to_rdf_conversion): tripletas en el ORDEN DEL DOCUMENTO, que es
+    determinista y conserva el orden de notas y ejemplos. Sin duplicados (como haría rdflib)."""
     import xml.etree.ElementTree as ET
     root = ET.parse(str(path)).getroot()
     for el in root:
         about = el.get(f"{{{RDF}}}about")
         if about is None:
             continue
+        seen = set()
         for ch in el:
             if not ch.tag.startswith("{"):
                 continue
             ns, local = ch.tag[1:].split("}")
             res = ch.get(f"{{{RDF}}}resource")
-            if res is not None:
-                yield about, ns + local, res, None
-            else:
-                yield about, ns + local, (ch.text or "").strip(), ch.get(XML_LANG, "")
+            t = (about, ns + local, res, None) if res is not None else \
+                (about, ns + local, (ch.text or "").strip(), ch.get(XML_LANG, ""))
+            if t not in seen:
+                seen.add(t)
+                yield t
 
 
 def iter_triples(path):
-    try:
-        import rdflib  # noqa: F401
-        return _triples_rdflib(path)
-    except ImportError:
-        return _triples_et(path)
+    """RDF/XML: lector XML en orden del documento (determinista y rápido). Otras sintaxis: rdflib ordenado."""
+    if str(path).lower().endswith((".rdf", ".xml", ".owl")):
+        try:
+            import xml.etree.ElementTree as ET
+            for _ in ET.iterparse(str(path), events=("start",)):     # ¿es XML? (solo mira el inicio)
+                break
+            return _triples_et(path)
+        except ET.ParseError:
+            pass
+    return _triples_rdflib(path)
 
 
 # ------------------------------------------------------------------------------ árbol

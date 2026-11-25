@@ -47,7 +47,143 @@ class TestTree(unittest.TestCase):
         self.assertTrue(any(l == "warning" for l, _ in validate("94(999)", t)))
         c = components('94:34(460)"18"=134.2')
         self.assertEqual(c["main"], ["94", "34"]); self.assertEqual(c["place"], ["(460)"])
-        self.assertEqual(compose([{"code": "94"}], {"lang": "=134.2", "place": "(460)"}), "94=134.2(460)")
+        # orden de cita estándar: lugar, tiempo, forma, idioma
+        self.assertEqual(compose([{"code": "94"}], {"lang": "=134.2", "place": "(460)"}), "94(460)=134.2")
+
+
+class TestPdfPages(unittest.TestCase):
+    """Descarte de páginas vacías: guardas, portadas lisas, 'intentionally left blank', escaneos con tinta."""
+
+    def _pdf(self):
+        import pymupdf
+        doc = pymupdf.open()
+        body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 6
+        doc.new_page()                                                    # 1 vacía
+        p = doc.new_page(); p.draw_rect(p.rect, color=None, fill=(0.3, 0.3, 0.3))   # 2 portada lisa oscura
+        doc.new_page().insert_text((72, 300), "This page intentionally left blank")  # 3
+        doc.new_page().insert_text((72, 300), "TITULO DEL LIBRO", fontsize=30)       # 4 portada con poco texto
+        p = doc.new_page()                                                # 5 "escaneada": tinta sin texto
+        for y in range(100, 700, 14):
+            p.draw_line((72, y), (520, y), width=4)
+        for _ in range(12):
+            doc.new_page().insert_textbox(pymupdf.Rect(72, 72, 520, 770), body)  # 6..17 texto
+        doc.new_page()                                                    # 18 vacía al final
+        path = TMP / "pages.pdf"
+        doc.save(path)
+        return path
+
+    def test_kinds_and_pick(self):
+        import pymupdf
+        from udcpoc.pdfio import page_kind, read_pdf, text_quality
+        path = self._pdf()
+        doc = pymupdf.open(path)
+        kinds = [page_kind(doc[i], doc[i].get_text("text")) for i in range(6)]
+        self.assertEqual(kinds, ["blank", "blank", "blank", "text", "image", "text"])
+        doc.close()
+        d = read_pdf(path)
+        self.assertEqual(d.pages_used, [3, 4, 5, 6, 7, 8, 14, 15, 16])   # salta 3 vacías al inicio y 1 al final
+        self.assertEqual(d.blank_skipped, 4)
+        self.assertFalse(d.scanned)                                # solo 1 de 6 páginas sin texto
+        self.assertTrue(any("--ocr" in w for w in d.warnings))
+        self.assertTrue(d.head_text[0].startswith("TITULO"))
+        self.assertEqual(d.head_text[1], "")                       # la escaneada no aporta texto sin OCR
+        self.assertGreater(text_quality("Discours de la méthode, pour bien conduire sa raison"), 0.9)
+        self.assertLess(text_quality("; oi ) = / — ® Le 2e. ss x Es Ée . * Fr F è [44° st: % ñ }"), 0.5)
+
+
+class TestMusic(unittest.TestCase):
+    """Partituras: pentagramas dibujados, plantilla por sistema y clasificación dentro de 78."""
+
+    @staticmethod
+    def _score_pdf(per_system=2, systems=5, pages=4, text=""):
+        import pymupdf
+        doc = pymupdf.open()
+        for _ in range(pages):
+            p = doc.new_page()
+            y = 80
+            for _s in range(systems):
+                for _k in range(per_system):
+                    for ln in range(5):                       # 5 líneas a 5 pt
+                        p.draw_line((60, y + 5 * ln), (540, y + 5 * ln), width=0.6)
+                    y += 20 + 22                              # pentagrama + hueco dentro del sistema
+                y += 40                                       # hueco entre sistemas (mayor)
+            if text:
+                p.insert_text((60, 40), text)
+        path = TMP / f"score_{per_system}_{systems}.pdf"
+        doc.save(path)
+        return path
+
+    def test_detect_and_template(self):
+        import pymupdf
+        from udcpoc import music
+        d = pymupdf.open(self._score_pdf(2, 5))
+        info = music.detect(d)
+        self.assertTrue(info.is_score)
+        self.assertEqual(info.per_system, 2)
+        d = pymupdf.open(self._score_pdf(3, 3))
+        self.assertEqual(music.detect(d).per_system, 3)
+
+    def test_text_page_is_not_score(self):
+        import pymupdf
+        from udcpoc import music
+        doc = pymupdf.open()
+        for _ in range(4):
+            doc.new_page().insert_textbox(pymupdf.Rect(60, 60, 540, 780), "Lorem ipsum dolor sit amet. " * 120)
+        self.assertEqual(music.detect(doc).score_pages, 0)
+
+    def test_decide_and_classify(self):
+        from udcpoc import music
+        info = music.StaffInfo(pages_checked=6, score_pages=5, per_system=2)
+        self.assertTrue(music.decide(info, "Sobre las olas", "Rosas_SobrelasOlas")[0])
+        self.assertFalse(music.decide(info, "Tonal Harmony", "Tonal Harmony - Kostka")[0])   # libro SOBRE música
+        weak = music.StaffInfo(pages_checked=6, score_pages=2)
+        self.assertFalse(music.decide(weak, "", "variaciones")[0])
+        self.assertTrue(music.decide(weak, "", "IMSLP302161-bach")[0])                       # fuente de partituras
+        c = lambda txt, ps=0: music.classify(txt, music.StaffInfo(per_system=ps))["mains"]
+        self.assertEqual(c("Toccatina, Alkan, Op. 75", 2), ["780.8", "780.616.433", "78.083.3"])
+        self.assertEqual(c("Sobre las olas. Vals para piano"), ["780.8", "780.616.433", "78.085.2"])
+        self.assertEqual(c("Estrellita (Little Star)", 3), ["784.3"])
+        self.assertEqual(c("Streichquartett Nr. 14"), ["785.74"])
+        self.assertEqual(c("Symphonie Nr. 5 c-moll", 1), ["785.11"])
+        self.assertEqual(c("Konzert für Violine und Orchester"), ["785.6", "780.614.332"])
+        self.assertEqual(c("La Traviata. Opera in tre atti"), ["782"])
+        self.assertEqual(c("Missa solemnis"), ["783"])
+
+
+class TestEnrich(unittest.TestCase):
+    """Enriquecimiento por identificador (sin red: solo las partes deterministas)."""
+
+    def test_helpers(self):
+        from udcpoc import enrich as en
+        self.assertEqual(en.isbn13("0-393-92516-1"), "9780393925166")
+        self.assertEqual(en.lcc_label("QA433 .S28 2005"), "Mathematics")
+        self.assertEqual(en.lcc_label("MT50.P455 T9"), "Musical instruction and study")
+        self.assertEqual(en.ddc_label("515/.63"), "Mathematics")
+        v = en.subjects_view({"subjects": ["Vector analysis", "Qa433 .s28 2005", "515/.63"],
+                              "lcc": ["QA433 .S28 2005"], "ddc": ["515/.63"]})
+        self.assertEqual(v, "Vector analysis; Mathematics")         # sin códigos sueltos ni duplicados
+
+    def test_offline_cache_and_no_ids(self):
+        from udcpoc import enrich as en
+        self.assertIsNone(en.enrich({}))
+        en._cache = {"ol:9780393925166": {"fields": {"title": "Div, grad, curl"}, "subjects": ["Vector analysis"]},
+                     "bnpl:9780393925166": {"udc": ["514.742(075.8)"]}}
+        try:
+            e = en.enrich({"isbn": "0393925161"})                   # todo sale de la caché: sin red
+            self.assertEqual(e["sources"], ["openlibrary", "bn.org.pl"])
+            self.assertEqual(e["udc"], ["514.742(075.8)"])
+        finally:
+            en._cache = None
+
+    def test_catalog_udc_goes_first(self):
+        tree = Tree.load(RDF)
+        emb = Embedder("dummy")
+        clf = Classifier(tree, UDCIndex.load_or_build(tree, emb, TMP / "idx_cat", progress=False), emb)
+        views = {"front": "A history of Spain", "toc": "", "body": "", "tail": ""}
+        r = clf.suggest(views, {"item_type": "book", "external_udc": {"codes": ["[94(460)]"], "source": "bn.org.pl"}})
+        self.assertEqual(r["suggestions"][0]["udc"], "94(460)")
+        self.assertIn("catálogo", r["suggestions"][0]["explain"]["origen"])
+        self.assertLessEqual(len(r["suggestions"]), 3)
 
 
 class TestMetadata(unittest.TestCase):
@@ -59,6 +195,29 @@ class TestMetadata(unittest.TestCase):
     def test_dates_and_names(self):
         self.assertEqual(md.norm_date("Filed: Mar. 5, 2019"), "2019-03-05")
         self.assertEqual(md.norm_date("12 de mayo de 2001"), "2001-05-12")
+        self.assertEqual(md.norm_date("3. März 1999"), "1999-03-03")                # sin idioma: no ambiguo
+        self.assertEqual(md.norm_date("14 juillet 1789"), "1789-07-14")
+        self.assertEqual(md.norm_date("12 de octubre de 1492", "es"), "1492-10-12")
+        self.assertEqual(md.norm_date("5 listopada 2010", "pl"), "2010-11-05")      # ambiguo: necesita idioma
+        self.assertEqual(md.norm_date("5 listopada 2010", "hr"), "2010-10-05")
+        self.assertEqual(md.norm_date("12 мая 2001", "ru"), "2001-05-12")
+        self.assertEqual(md.parse_names("Иван Петров, Анна Смирнова"), ["Иван Петров", "Анна Смирнова"])
+        self.assertEqual(md.parse_names("Jean-Paul Sartre et Simone de Beauvoir"),
+                         ["Jean-Paul Sartre", "Simone de Beauvoir"])
+        self.assertEqual(md.split_title_extras("Analyse, 2e édition")[1], "2")
+        self.assertEqual(md.split_title_extras("Mechanik (3. Auflage)")[1], "3")
+        self.assertEqual(md.pick_keywords("Mots-clés : histoire, chimie\n\nIntro"), ["histoire", "chimie"])
+        self.assertEqual(md.detect_doctype("thèse de doctorat, université de paris, directeur", {}, 200)[0],
+                         "thesis")
+        self.assertEqual(md.detect_doctype("dissertation zur erlangung des doktorgrades, universität, betreuer",
+                                           {}, 200)[0], "thesis")
+        # créditos de revisores en la contraportada de un libro largo: empate tesis/libro -> libro
+        self.assertEqual(md.detect_doctype("revisores: maestría en sistemas, university of texas", {}, 348)[0],
+                         "book")
+        # falsos amigos entre idiomas: palabras corrientes que no deben disparar un tipo
+        for txt in ("these results show attention, university of toronto", "un largo camino lento",
+                    "the partition function", "querido amigo, el precio es caro"):
+            self.assertNotIn(md.detect_doctype(txt, {}, 10)[0], ("thesis", "score", "letter"), txt)
         self.assertEqual(md.parse_names("Juan Pérez, María de la Cruz y Ana López"), ["Juan Pérez", "María de la Cruz", "Ana López"])
         self.assertEqual(md.parse_names("Pérez, Juan"), ["Juan Pérez"])
         self.assertEqual(md.parse_names("Universidad Nacional Autónoma"), [])
@@ -130,13 +289,60 @@ class TestClassify(unittest.TestCase):
         self.assertIsNone(aux.form_aux("book", None, "", t))  # un libro normal no lleva forma
         self.assertEqual(aux.form_aux("book", None, "A First Course in Calculus", t)["code"], "(075)")
         self.assertEqual(aux.form_aux("book", None, "CRC Handbook of Chemistry", t)["code"], "(035)")
-        self.assertEqual(aux.time_aux("La España del siglo XIX y la crisis de 1808", t)["code"], '"18"')
+        self.assertEqual(aux.time_aux("", t, title="La España del siglo XIX y la crisis de 1808")["code"], '"18"')
         self.assertIsNone(aux.time_aux("Un texto sin fechas", t))
+        self.assertEqual(aux.time_aux("", t, title="Twentieth-century Harmony")["code"], '"19"')
+        # años sueltos (edición, informes, citas) ya no dan periodo
+        self.assertIsNone(aux.time_aux("Informe 2021. Datos de 2019, 2020 y 2022. Publicado en 2023.", t))
+        self.assertEqual(aux.form_aux("book", None, "A First Course in Calculus, 9th edition", t)["code"], "(075.8)")
+        self.assertEqual(aux.form_aux("journalArticle", None, "", t)["code"], "(045)")
+        self.assertEqual(aux.form_aux("book", None, "LM317 datasheet. Absolute maximum ratings", t)["code"], "(085)")
 
     def test_place(self):
         pf = aux.PlaceFinder(self.tree)
-        self.assertEqual(pf.find([("Historia de España", 5.0)])["code"], "(460)")
-        self.assertIsNone(pf.find([("Un libro sobre cosas", 5.0)]))
+        self.assertEqual(pf.find([("Historia de España", 5.0)], "es")["code"], "(460)")
+        self.assertIsNone(pf.find([("Un libro sobre cosas", 5.0)], "es"))
+        # cualquier idioma: nombres CLDR en el idioma del documento
+        self.assertEqual(pf.find([("Geschichte Mexikos und Spaniens: Mexiko", 5.0)], "de")["code"], "(72)")
+        self.assertEqual(pf.find([("История Испании", 5.0)], "ru")["code"], "(460)")
+        self.assertEqual(pf.find([("スペインの歴史", 5.0)], "ja")["code"], "(460)")
+        self.assertEqual(pf.find([("A history of Spain", 5.0)], "fr")["code"], "(460)")   # inglés siempre
+        self.assertEqual(pf.find([("Historia de EE. UU. y México", 5.0)], "es")["code"], "(72)")  # alias
+
+    def test_index_incremental_and_deterministic(self):
+        import json
+        d = TMP / "idx_inc"
+        t1 = Tree.load(RDF)
+        self.assertEqual(t1.fingerprint(), Tree.load(RDF).fingerprint())       # misma entrada, misma huella
+        emb = Embedder("dummy")
+        calls = []
+        orig = emb.encode
+        emb.encode = lambda texts, **k: (calls.append(len(texts)), orig(texts, **k))[1]
+        i1 = UDCIndex.load_or_build(t1, emb, d, progress=False)
+        UDCIndex.load_or_build(Tree.load(RDF), emb, d, progress=False)          # nada que hacer
+        self.assertEqual(calls, [len(i1.uris)])
+        rdf2 = TMP / "udc2.rdf"
+        rdf2.write_text(RDF.read_text(encoding="utf-8").replace(">Spain<", ">Kingdom of Spain<"), encoding="utf-8")
+        t2 = Tree.load(rdf2)
+        i2 = UDCIndex.load_or_build(t2, emb, d, progress=False)
+        self.assertEqual(calls[-1], sum(1 for n in t2.indexable() if "Kingdom of Spain" in t2.node_text(n)))
+        self.assertLess(calls[-1], len(i2.uris))                                # solo lo que cambió
+        u = next(n.uri for n in t2.indexable() if n.notation == "94")
+        np.testing.assert_allclose(i2.emb[i2.pos[u]], i1.emb[i1.pos[u]])        # reutilizado tal cual
+        self.assertIn("texts", json.loads((d / "dummy" / "meta.json").read_text(encoding="utf-8")))
+
+    def test_lang_any(self):
+        for iso, code in (("es", "=134.2"), ("en", "=111")):
+            self.assertEqual(aux.lang_aux(iso, 0.9, self.tree)["code"], code)
+        self.assertIsNone(aux.lang_aux("zxx", 0.9, self.tree))
+
+    def test_time_multilingual(self):
+        for txt in ("Histoire de la France au XIXe siècle", "Deutschland im 19. Jahrhundert",
+                    "Storia d'Italia nel XIX secolo", "História do Brasil no século XIX",
+                    "Spain in the 19th century", "Россия в XIX веке"):
+            r = aux.time_aux(txt + ". " + txt, self.tree)
+            self.assertIsNotNone(r, txt)
+            self.assertEqual(r["code"], '"18"', txt)
 
     def test_full_suggestion(self):
         views = {"front": "A history of Spain in the nineteenth century: monarchy and revolutions. History",

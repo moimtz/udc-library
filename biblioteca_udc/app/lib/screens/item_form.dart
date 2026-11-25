@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/api.dart';
 import '../core/app_state.dart';
 import '../core/models.dart';
+import '../widgets/item_tile.dart' show UnconfirmedMark;
 import 'udc_picker.dart';
 
 enum AddOutcome { added, skipped, cancelAll }
@@ -42,16 +43,45 @@ Future<void> editItemDialog(BuildContext context, Item item) async {
     barrierDismissible: false,
     builder: (_) => ItemFormDialog(item: item),
   );
-  if (r is Item && context.mounted) context.read<AppState>().itemUpdated(r);
+  if (r is Item && context.mounted) {
+    final s = context.read<AppState>();
+    s.itemUpdated(r);
+    await s.refreshAfterChange(); // the UDC tree counts may have changed
+  }
 }
 
+/// One creator in the form. The source of an automatic name is kept while the name is left as it was.
 class _CreatorRow {
-  String role;
+  String creatorType;
+  int fieldMode;
   final TextEditingController first;
   final TextEditingController last;
-  _CreatorRow(this.role, String f, String l)
+  final String source;
+  final double? confidence;
+  final bool confirmed;
+  final String origFirst;
+  final String origLast;
+  _CreatorRow(this.creatorType, String f, String l,
+      {this.fieldMode = 0, this.source = manualSource, this.confidence, this.confirmed = true})
       : first = TextEditingController(text: f),
-        last = TextEditingController(text: l);
+        last = TextEditingController(text: l),
+        origFirst = f,
+        origLast = l;
+
+  factory _CreatorRow.from(Creator c) => _CreatorRow(c.creatorType, c.firstName, c.lastName,
+      fieldMode: c.fieldMode, source: c.source, confidence: c.confidence, confirmed: c.confirmed);
+
+  bool get isEmpty => first.text.trim().isEmpty && last.text.trim().isEmpty;
+  bool get unchanged => first.text.trim() == origFirst && last.text.trim() == origLast;
+
+  Map<String, dynamic> toJson() => {
+        'creator_type': creatorType,
+        'field_mode': fieldMode,
+        'first_name': fieldMode == 1 ? '' : first.text.trim(),
+        'last_name': last.text.trim(),
+        if (unchanged && source != manualSource) ...{'source': source, 'confidence': confidence},
+      };
+
   void dispose() {
     first.dispose();
     last.dispose();
@@ -70,13 +100,16 @@ class ItemFormDialog extends StatefulWidget {
 }
 
 class _ItemFormDialogState extends State<ItemFormDialog> {
-  final _title = TextEditingController();
-  final _year = TextEditingController();
-  final _language = TextEditingController();
-  final _udc = TextEditingController();
-  final _page = TextEditingController(text: '1');
-  final Map<String, TextEditingController> _data = {};
+  final Map<String, TextEditingController> _fields = {};
+  // Value and provenance of each field as it came from the server, the PDF or a lookup. A value the person
+  // leaves as it is keeps that source when saved; an edited one becomes 'manual'.
+  final Map<String, FieldValue> _prov = {};
   final List<_CreatorRow> _creators = [];
+  final _udc = TextEditingController();
+  final _tags = TextEditingController();
+  final Map<String, UdcValue> _udcProv = {};
+  final Map<String, String> _tagSources = {};
+  final _page = TextEditingController(text: '1');
   String _type = 'book';
 
   bool get _isEdit => widget.item != null;
@@ -95,39 +128,38 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   _Kind _bannerKind = _Kind.info;
   int _bannerId = 0;
 
-  TextEditingController _ctl(String key) => _data.putIfAbsent(key, () => TextEditingController());
+  TextEditingController _ctl(String code) => _fields.putIfAbsent(code, () => TextEditingController());
+
+  TypeDef? get _typeDef => context.read<AppState>().schema.type(_type);
 
   @override
   void initState() {
     super.initState();
     final s = context.read<AppState>();
-    _type = s.schema.types.isNotEmpty ? s.schema.types.first.code : 'other';
+    final enabled = s.schema.enabledTypes;
+    _type = enabled.any((t) => t.code == 'book') ? 'book' : (enabled.isNotEmpty ? enabled.first.code : 'book');
     final it = widget.item;
     if (it != null) {
-      _type = s.schema.type(it.itemType) != null ? it.itemType : 'other';
-      _title.text = it.title;
-      _year.text = it.year?.toString() ?? '';
-      _language.text = it.language;
-      _udc.text = it.udc;
+      _type = it.itemType;
+      _setValues(it.fields);
+      for (final c in it.creators) {
+        _creators.add(_CreatorRow.from(c));
+      }
+      _setUdc(it.udc);
+      _setTags(it.tags);
       _coverPage = it.coverPage;
       _pages = it.pages ?? 1;
       _page.text = '$_coverPage';
-      for (final e in it.data.entries) {
-        _ctl(e.key).text = e.value;
-      }
-      for (final c in it.creators) {
-        _creators.add(_CreatorRow(c.role, c.first, c.last));
-      }
     } else {
       _phase = 'uploading';
       WidgetsBinding.instance.addPostFrameCallback((_) => _upload());
     }
-    if (_creators.isEmpty) _creators.add(_CreatorRow('author', '', ''));
+    if (_creators.isEmpty) _creators.add(_CreatorRow(_typeDef?.primaryCreator ?? 'author', '', ''));
   }
 
   @override
   void dispose() {
-    for (final c in [_title, _year, _language, _udc, _page, ..._data.values]) {
+    for (final c in [..._fields.values, _udc, _tags, _page]) {
       c.dispose();
     }
     for (final c in _creators) {
@@ -146,6 +178,145 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       Future.delayed(Duration(seconds: seconds), () {
         if (mounted && id == _bannerId) setState(() => _bannerText = null);
       });
+    }
+  }
+
+  // ------------------------------------------------------------------ form values
+  /// Replaces every field value (and its provenance).
+  void _setValues(Map<String, FieldValue> values) {
+    for (final c in _fields.values) {
+      c.clear();
+    }
+    _prov.clear();
+    for (final e in values.entries) {
+      _ctl(e.key).text = e.value.value;
+      _prov[e.key] = e.value;
+    }
+  }
+
+  /// Sets some fields, keeping the others.
+  void _mergeValues(Map<String, FieldValue> values) {
+    for (final e in values.entries) {
+      _ctl(e.key).text = e.value.value;
+      _prov[e.key] = e.value;
+    }
+  }
+
+  void _setCreators(List<Creator> list) {
+    for (final c in _creators) {
+      c.dispose();
+    }
+    _creators
+      ..clear()
+      ..addAll(list.map(_CreatorRow.from));
+    if (_creators.isEmpty) _creators.add(_CreatorRow(_typeDef?.primaryCreator ?? 'author', '', ''));
+  }
+
+  void _setUdc(List<UdcValue> list) {
+    _udcProv
+      ..clear()
+      ..addAll({for (final u in list) u.notation: u});
+    _udc.text = list.map((u) => u.notation).join(' ; ');
+  }
+
+  void _setTags(List<TagValue> list) {
+    _tagSources
+      ..clear()
+      ..addAll({for (final t in list) t.name.toLowerCase(): t.source});
+    _tags.text = list.map((t) => t.name).join('; ');
+  }
+
+  void _addTags(List<TagValue> list) {
+    final have = _splitTags(_tags.text);
+    for (final t in list) {
+      if (have.any((h) => h.toLowerCase() == t.name.toLowerCase())) continue;
+      have.add(t.name);
+      _tagSources[t.name.toLowerCase()] = t.source;
+    }
+    _tags.text = have.join('; ');
+  }
+
+  static List<String> _splitTags(String s) =>
+      [for (final t in s.split(RegExp(r'[;\n]'))) if (t.trim().isNotEmpty) t.trim()];
+
+  static List<String> _splitUdc(String s) =>
+      [for (final t in s.split(RegExp(r'\s;\s|;|\n'))) if (t.trim().isNotEmpty) t.trim()];
+
+  /// Field value as sent to the server: with its source while it is unchanged, plain text otherwise.
+  dynamic _out(String code) {
+    final text = _ctl(code).text.trim();
+    final p = _prov[code];
+    if (p != null && p.value.trim() == text && p.isAutomatic) return p.toJson();
+    return text;
+  }
+
+  Map<String, dynamic> _currentFields() {
+    final t = _typeDef;
+    return {
+      for (final f in t?.fields ?? const <FieldDef>[])
+        if (!f.hidden && _ctl(f.code).text.trim().isNotEmpty) f.code: _out(f.code)
+    };
+  }
+
+  List<Map<String, dynamic>> _currentCreators() => [for (final c in _creators) if (!c.isEmpty) c.toJson()];
+
+  Map<String, dynamic> _itemJson() => {
+        'item_type': _type,
+        'fields': _currentFields(),
+        'creators': _currentCreators(),
+        'tags': [
+          for (final t in _splitTags(_tags.text))
+            {'name': t, 'source': _tagSources[t.toLowerCase()] ?? manualSource}
+        ],
+        'udc': [
+          for (final n in _splitUdc(_udc.text))
+            if (_udcProv[n] != null && _udcProv[n]!.source != manualSource) _udcProv[n]!.toJson() else n
+        ],
+      };
+
+  // ------------------------------------------------------------------ type change
+  /// Moves the form's values to another type (the server applies Zotero's base-field rules).
+  Future<bool> _changeType(String to, {bool quiet = false}) async {
+    if (to == _type) return true;
+    final s = context.read<AppState>();
+    final fields = _currentFields();
+    final creators = _currentCreators();
+    if (fields.isEmpty && creators.isEmpty) {
+      setState(() {
+        _type = to;
+        for (final c in _creators) {
+          if (!(_typeDef?.allowsCreator(c.creatorType) ?? true)) c.creatorType = _typeDef!.primaryCreator;
+        }
+      });
+      return true;
+    }
+    setState(() => _busy = true);
+    try {
+      final r = await s.api.convertType(_type, to, fields, creators);
+      if (!mounted) return false;
+      final conv = Map<String, dynamic>.from(r['fields'] as Map);
+      final report = Map<String, dynamic>.from(r['report'] as Map);
+      setState(() {
+        _type = to;
+        _setValues({for (final e in conv.entries) e.key: FieldValue.fromJson(e.value)});
+        _setCreators([
+          for (final c in (r['creators'] as List)) Creator.fromJson(Map<String, dynamic>.from(c as Map))
+        ]);
+      });
+      final toExtra = (report['to_extra'] as List?) ?? [];
+      final moved = (report['moved'] as List?) ?? [];
+      if (!quiet && toExtra.isNotEmpty) {
+        _banner('No field for ${toExtra.map((x) => (x as Map)['label']).join(', ')} in this type: '
+            'moved to Extra.', _Kind.warning, seconds: 10);
+      } else if (!quiet && moved.isNotEmpty) {
+        _banner('Values moved to the fields of the new type.', _Kind.info, seconds: 5);
+      }
+      return true;
+    } on ApiException catch (e) {
+      if (mounted) _banner('The type could not be changed: ${e.message}', _Kind.error, seconds: 8);
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -170,23 +341,21 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     }
   }
 
+  /// Title and authors from the PDF's metadata (or the file name).
   void _applyGuess(Map<String, dynamic> g) {
-    final t = (g['title'] as String?) ?? '';
-    if (t.isNotEmpty) {
-      _title.text = t;
+    final f = Map<String, dynamic>.from((g['fields'] as Map?) ?? {});
+    final titleField = _typeDef?.titleField ?? 'title';
+    if (f['title'] != null) {
+      _mergeValues({titleField: FieldValue.fromJson(f['title'])});
     } else {
       final name = widget.file!.name.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
-      _title.text = name.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+      _mergeValues({
+        titleField: FieldValue(name.replaceAll(RegExp(r'[_\-]+'), ' ').trim(), source: 'filename', confidence: 0.2)
+      });
     }
     final list = (g['creators'] as List?) ?? [];
     if (list.isNotEmpty) {
-      _creators
-        ..forEach((c) => c.dispose())
-        ..clear();
-      for (final c in list) {
-        final m = Map<String, dynamic>.from(c as Map);
-        _creators.add(_CreatorRow((m['role'] ?? 'author').toString(), (m['first'] ?? '').toString(), (m['last'] ?? '').toString()));
-      }
+      _setCreators([for (final c in list) Creator.fromJson(Map<String, dynamic>.from(c as Map))]);
     }
   }
 
@@ -195,18 +364,39 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     final s = context.read<AppState>();
     setState(() => _busy = true);
     _banner('Looking up the bibliographic record...', _Kind.info);
+    String v(String code) => _ctl(code).text.trim();
+    final extra = v('extra');
+    final arxiv = RegExp(r'arXiv:\s*([\w.\-/]+)', caseSensitive: false).firstMatch('${v('archiveID')}\n$extra');
     try {
       final r = await s.api.autofill(
         tempId: _tempId,
-        doi: _data['doi']?.text.trim(),
-        isbn: _data['isbn']?.text.trim(),
-        arxiv: _data['arxiv']?.text.trim(),
+        doi: v('DOI').isNotEmpty ? v('DOI') : RegExp(r'^DOI:\s*(\S+)', multiLine: true).firstMatch(extra)?.group(1),
+        isbn: v('ISBN'),
+        arxiv: arxiv?.group(1),
+        itemType: _type,
       );
       if (!mounted) return;
+      final type = r['item_type'] as String;
+      if (type != _type && !await _changeType(type, quiet: true)) return;
       final ident = Map<String, dynamic>.from(r['identifier'] as Map);
-      setState(() => _applyFilled(Map<String, dynamic>.from(r['fields'] as Map)));
-      _banner('Filled from ${(ident['type'] as String).toUpperCase()} ${ident['value']}. Check the fields before saving.',
-          _Kind.success, seconds: 6);
+      final fields = Map<String, dynamic>.from(r['fields'] as Map);
+      final creators = (r['creators'] as List?) ?? [];
+      setState(() {
+        final extraNew = fields.remove('extra');
+        _mergeValues({for (final e in fields.entries) e.key: FieldValue.fromJson(e.value)});
+        if (extraNew != null) {
+          // values with no field in this type: appended to Extra, never replacing what is there
+          final add = FieldValue.fromJson(extraNew);
+          final old = _ctl('extra').text.trim();
+          _ctl('extra').text = [if (old.isNotEmpty) old, add.value].join('\n');
+        }
+        if (creators.isNotEmpty) {
+          _setCreators([for (final c in creators) Creator.fromJson(Map<String, dynamic>.from(c as Map))]);
+        }
+        _addTags([for (final t in (r['tags'] as List?) ?? []) TagValue.fromJson(t)]);
+      });
+      _banner('Filled from ${(ident['type'] as String).toUpperCase()} ${ident['value']}. '
+          'Check the fields before saving.', _Kind.success, seconds: 6);
     } on ApiException catch (e) {
       if (mounted) _banner(e.message, _Kind.error, seconds: 8);
     } finally {
@@ -214,60 +404,12 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     }
   }
 
-  void _applyFilled(Map<String, dynamic> f) {
-    final s = context.read<AppState>();
-    final t = f['item_type'] as String?;
-    if (t != null && s.schema.type(t) != null) _type = t;
-    if ((f['title'] ?? '').toString().isNotEmpty) _title.text = f['title'].toString();
-    if (f['year'] != null) _year.text = f['year'].toString();
-    if ((f['language'] ?? '').toString().isNotEmpty) _language.text = f['language'].toString();
-    final list = (f['creators'] as List?) ?? [];
-    if (list.isNotEmpty) {
-      for (final c in _creators) {
-        c.dispose();
-      }
-      _creators.clear();
-      for (final c in list) {
-        final m = Map<String, dynamic>.from(c as Map);
-        _creators.add(_CreatorRow((m['role'] ?? 'author').toString(), (m['first'] ?? '').toString(), (m['last'] ?? '').toString()));
-      }
-    }
-    final data = Map<String, dynamic>.from((f['data'] as Map?) ?? {});
-    for (final e in data.entries) {
-      _ctl(e.key).text = e.value.toString();
-    }
-  }
-
   // ------------------------------------------------------------------ submit
-  Map<String, dynamic> _fields() {
-    final s = context.read<AppState>();
-    final keys = s.schema.type(_type)?.fields ?? <String>[];
-    return {
-      'item_type': _type,
-      'title': _title.text.trim(),
-      'year': int.tryParse(_year.text.trim()),
-      'language': _language.text.trim(),
-      'udc': _udc.text.trim(),
-      'creators': [
-        for (final c in _creators)
-          if (c.first.text.trim().isNotEmpty || c.last.text.trim().isNotEmpty)
-            {'role': c.role, 'first': c.first.text.trim(), 'last': c.last.text.trim()}
-      ],
-      'data': {
-        for (final k in keys)
-          if (_ctl(k).text.trim().isNotEmpty) k: _ctl(k).text.trim()
-      },
-    };
-  }
-
   Future<void> _submit() async {
     final s = context.read<AppState>();
-    if (_title.text.trim().isEmpty) {
-      _banner('Title is required.', _Kind.error, seconds: 5);
-      return;
-    }
-    if (_year.text.trim().isNotEmpty && int.tryParse(_year.text.trim()) == null) {
-      _banner('Year must be a number, for example 1998.', _Kind.error, seconds: 5);
+    final titleField = _typeDef?.titleField ?? 'title';
+    if (_ctl(titleField).text.trim().isEmpty) {
+      _banner('${_typeDef?.field(titleField)?.label ?? 'Title'} is required.', _Kind.error, seconds: 5);
       return;
     }
     if (!await _checkCancelledUdc()) return;
@@ -275,7 +417,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     try {
       if (_isEdit) {
         final it = await s.api.updateItem(widget.item!.id, {
-          ..._fields(),
+          ..._itemJson(),
           'cover_page': _coverPage,
           'regen_citekey': _regenKey,
         });
@@ -286,7 +428,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       } else {
         final it = await s.api.createItem({
           'temp_id': _tempId,
-          'fields': _fields(),
+          'item': _itemJson(),
           'cover_page': _coverPage,
           'duplicate_action': _dupAction,
           if (_replaceId != null) 'replace_id': _replaceId,
@@ -351,11 +493,19 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     _submit();
   }
 
+  /// Adds a class from the tree to the main notation (as a ':' relation) or starts one.
   Future<void> _pickUdc() async {
     final code = await pickUdc(context);
-    if (code != null && mounted) {
-      setState(() => _udc.text = _udc.text.trim().isEmpty ? code : '${_udc.text.trim()}:$code');
-    }
+    if (code == null || !mounted) return;
+    final list = _splitUdc(_udc.text);
+    setState(() {
+      if (list.isEmpty) {
+        _udc.text = code;
+      } else {
+        list[0] = '${list[0]}:$code';
+        _udc.text = list.join(' ; ');
+      }
+    });
   }
 
   void _goToPage(int p) {
@@ -434,7 +584,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
               if (_isEdit) ...[
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   Checkbox(value: _regenKey, onChanged: _busy ? null : (v) => setState(() => _regenKey = v ?? false)),
-                  const Text('Regenerate citation key and file name'),
+                  const Text('Regenerate citation key and file names'),
                 ]),
                 TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
               ] else ...[
@@ -531,62 +681,61 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     );
   }
 
+
   Widget _form(AppState s) {
-    final typeDef = s.schema.type(_type);
-    final udcText = s.udc.describe(_udc.text, s.udcLang);
+    final t = s.schema.type(_type);
     const gap = SizedBox(height: 12);
+    final cs = Theme.of(context).colorScheme;
+    // A disabled type is offered only when the item already has it.
+    final types = [...s.schema.enabledTypes, if (t != null && !t.enabled) t];
+    final fields = [for (final f in t?.fields ?? const <FieldDef>[]) if (!f.hidden) f];
+    final titleField = t?.titleField ?? 'title';
+    final udcText = [for (final n in _splitUdc(_udc.text)) s.udc.describe(n, s.udcLang)]
+        .where((x) => x.isNotEmpty)
+        .join('; ');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (!_isEdit && _dups.isNotEmpty) _dupCard(),
       DropdownButtonFormField<String>(
-        value: s.schema.type(_type) != null ? _type : null,
-        decoration: const InputDecoration(labelText: 'Resource type', border: OutlineInputBorder()),
-        items: [for (final t in s.schema.types) DropdownMenuItem(value: t.code, child: Text(t.label))],
-        onChanged: (v) => setState(() => _type = v ?? _type),
-      ),
-      gap,
-      TextField(
-        controller: _title,
-        minLines: 1,
-        maxLines: 3,
-        decoration: const InputDecoration(labelText: 'Title *', border: OutlineInputBorder()),
-      ),
-      gap,
-      Text('Creators', style: Theme.of(context).textTheme.titleSmall),
-      const SizedBox(height: 6),
-      for (var i = 0; i < _creators.length; i++) _creatorEditor(i, s),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: () => setState(() => _creators.add(_CreatorRow('author', '', ''))),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Add creator'),
+        value: t != null ? _type : null,
+        decoration: InputDecoration(
+          labelText: 'Item type',
+          border: const OutlineInputBorder(),
+          suffixIcon: t == null || t.help.isEmpty ? null : _help(t.help),
         ),
+        items: [for (final x in types) DropdownMenuItem(value: x.code, child: Text(x.label))],
+        onChanged: _busy ? null : (v) => v == null ? null : _changeType(v),
       ),
-      gap,
-      Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _year,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
-            decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
+      for (final f in fields) ...[
+        gap,
+        _fieldEditor(f, required: f.code == titleField),
+        // Zotero puts the creators right after the title
+        if (f.code == titleField) ...[
+          gap,
+          Text('Creators', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 6),
+          for (var i = 0; i < _creators.length; i++) _creatorEditor(i, t),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _creators.add(_CreatorRow(t?.primaryCreator ?? 'author', '', ''))),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add creator'),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextField(
-            controller: _language,
-            decoration: const InputDecoration(labelText: 'Language', hintText: 'es, en, fr...', border: OutlineInputBorder()),
-          ),
-        ),
-      ]),
-      gap,
+        ],
+      ],
+      const Divider(height: 32),
       Row(children: [
         Expanded(
           child: TextField(
             controller: _udc,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(labelText: 'UDC notation', hintText: '004.8:61', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: 'UDC notation',
+              hintText: '004.8:61   (several: 53 ; 62)',
+              border: const OutlineInputBorder(),
+              prefixIcon: _udcUnconfirmed(),
+            ),
           ),
         ),
         IconButton(tooltip: 'Pick from the UDC tree', onPressed: _pickUdc, icon: const Icon(Icons.account_tree_outlined)),
@@ -594,30 +743,105 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       if (udcText.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(udcText, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          child: Text(udcText, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ),
-      for (final key in typeDef?.fields ?? <String>[]) ...[
-        gap,
-        TextField(
-          controller: _ctl(key),
-          minLines: s.schema.fields[key]?.kind == 'area' ? 3 : 1,
-          maxLines: s.schema.fields[key]?.kind == 'area' ? 8 : 1,
-          decoration: InputDecoration(labelText: s.schema.fields[key]?.label ?? key, border: const OutlineInputBorder()),
-        ),
-      ],
+      gap,
+      TextField(
+        controller: _tags,
+        decoration: const InputDecoration(
+            labelText: 'Tags', hintText: 'Separate tags with ;', border: OutlineInputBorder()),
+      ),
     ]);
   }
 
-  Widget _creatorEditor(int i, AppState s) {
+  Widget _help(String text) => Tooltip(
+        message: text,
+        preferBelow: false,
+        triggerMode: TooltipTriggerMode.tap,
+        child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.help_outline, size: 18)),
+      );
+
+  Widget? _udcUnconfirmed() {
+    for (final n in _splitUdc(_udc.text)) {
+      final p = _udcProv[n];
+      if (p != null && !p.confirmed && p.source != manualSource) {
+        return SizedBox(width: 30, child: Center(child: UnconfirmedMark(p.source, p.confidence)));
+      }
+    }
+    return null;
+  }
+
+  Widget _fieldEditor(FieldDef f, {bool required = false}) {
+    final ctl = _ctl(f.code);
+    final p = _prov[f.code];
+    // marked while the automatic value is still there and nobody has confirmed it
+    final automatic = p != null && p.isAutomatic && !p.confirmed && ctl.text.trim() == p.value.trim();
+    final long = f.kind == 'longtext';
+    return TextField(
+      controller: ctl,
+      readOnly: f.obsolete,
+      onChanged: automatic ? (_) => setState(() {}) : null,
+      minLines: long ? 3 : 1,
+      maxLines: long ? 10 : (f.code == 'title' || required ? 3 : 1),
+      keyboardType: f.kind == 'url' ? TextInputType.url : (long ? TextInputType.multiline : null),
+      decoration: InputDecoration(
+        labelText: '${f.label}${required ? ' *' : ''}${f.obsolete ? ' (no longer in Zotero)' : ''}',
+        hintText: switch (f.kind) {
+          'date' => 'e.g. 1998, March 1998, 1998-03-12',
+          'url' => 'https://...',
+          _ => f.code == 'extra' ? 'One "Name: value" per line, e.g. Type: musical_score' : null,
+        },
+        border: const OutlineInputBorder(),
+        prefixIcon: automatic
+            ? SizedBox(width: 30, child: Center(child: UnconfirmedMark(p.source, p.confidence)))
+            : null,
+        suffixIcon: f.help.isEmpty ? null : _help(f.help),
+      ),
+    );
+  }
+
+  Widget _creatorEditor(int i, TypeDef? t) {
     final c = _creators[i];
-    final roles = s.schema.roles.isEmpty ? ['author'] : s.schema.roles;
+    final roles = t?.creatorTypes ?? const <CreatorTypeDef>[];
+    final value = roles.any((r) => r.code == c.creatorType) ? c.creatorType : (roles.isEmpty ? null : roles.first.code);
+    final single = c.fieldMode == 1;
+    final automatic = !c.confirmed && c.source != manualSource && c.unchanged;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: TextField(controller: c.last, decoration: const InputDecoration(labelText: 'Last name', isDense: true, border: OutlineInputBorder()))),
-          const SizedBox(width: 8),
-          Expanded(child: TextField(controller: c.first, decoration: const InputDecoration(labelText: 'First name(s)', isDense: true, border: OutlineInputBorder()))),
+          if (automatic) UnconfirmedMark(c.source, c.confidence),
+          Expanded(
+              child: TextField(
+                  controller: c.last,
+                  onChanged: automatic ? (_) => setState(() {}) : null,
+                  decoration: InputDecoration(
+                      labelText: single ? 'Name (organization)' : 'Last name',
+                      isDense: true,
+                      border: const OutlineInputBorder()))),
+          if (!single) ...[
+            const SizedBox(width: 8),
+            Expanded(
+                child: TextField(
+                    controller: c.first,
+                    onChanged: automatic ? (_) => setState(() {}) : null,
+                    decoration: const InputDecoration(
+                        labelText: 'First name(s)', isDense: true, border: OutlineInputBorder()))),
+          ],
+          IconButton(
+            tooltip: single ? 'Switch to last name / first name' : 'Switch to a single field (organizations)',
+            onPressed: () => setState(() {
+              if (single) {
+                c.fieldMode = 0;
+              } else {
+                final full = [c.first.text.trim(), c.last.text.trim()].where((x) => x.isNotEmpty).join(' ');
+                c.fieldMode = 1;
+                c.last.text = full;
+                c.first.clear();
+              }
+            }),
+            icon: Icon(single ? Icons.person_outline : Icons.business_outlined, size: 20),
+          ),
           IconButton(
             tooltip: 'Remove',
             onPressed: _creators.length > 1
@@ -631,13 +855,16 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         ]),
         const SizedBox(height: 6),
         SizedBox(
-          width: 180,
+          width: 220,
           child: DropdownButtonFormField<String>(
-            value: roles.contains(c.role) ? c.role : roles.first,
+            value: value,
             isDense: true,
             decoration: const InputDecoration(labelText: 'Role', isDense: true, border: OutlineInputBorder()),
-            items: [for (final r in roles) DropdownMenuItem(value: r, child: Text(r))],
-            onChanged: (v) => setState(() => c.role = v ?? c.role),
+            items: [
+              for (final r in roles)
+                DropdownMenuItem(value: r.code, child: Tooltip(message: r.help, child: Text(r.label)))
+            ],
+            onChanged: (v) => setState(() => c.creatorType = v ?? c.creatorType),
           ),
         ),
       ]),
@@ -645,7 +872,6 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   }
 }
 
-/// "568 was cancelled in 2011 (E&C33)..." with one button per replacing class. Returns the UDC string with that
 /// component replaced, the same string ("Save as it is") or null ("Back to editing").
 class _CancelledUdcDialog extends StatelessWidget {
   final String udc;

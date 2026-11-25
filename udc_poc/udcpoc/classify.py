@@ -3,6 +3,7 @@ reranker opcional + composición con tablas auxiliares + validación determinist
 from __future__ import annotations
 import base64
 import math
+import re
 
 import numpy as np
 
@@ -124,6 +125,7 @@ class Classifier:
     # ------------------------------------------------------------ API principal
     def suggest(self, views: dict, ctx: dict, sha: str | None = None, topn: int = 3) -> dict:
         t = self.tree
+        want = topn
         names = [n for n in config.VIEW_WEIGHTS if (views.get(n) or "").strip()]
         if not names:
             return {"suggestions": [], "low_confidence": True, "note": "Sin texto utilizable para clasificar.",
@@ -175,6 +177,17 @@ class Classifier:
         ranked = [(rows[i][0], rows[i][1], float(scores[i])) for i in order]
         conf_all = _softmax([r[2] for r in ranked[:8]], temp)
 
+        # --- partitura: la 1.ª sugerencia sale de reglas dentro de 78; el resto, solo de la rama 78
+        music_sug = None
+        if ctx.get("score"):
+            from . import music
+            info = music.StaffInfo(per_system=int(ctx["score"].get("per_system") or 0))
+            music_sug = music.classify(ctx["score"].get("text", ""), info)
+            in78 = lambda n: any(x.notation == "78" for x in t.path(n))
+            ranked = [r for r in ranked if in78(r[0])]
+            conf_all = _softmax([r[2] for r in ranked[:8]], temp) if ranked else []
+            topn -= 1
+
         # --- selección diversa (sin ancestros/descendientes entre sí)
         chosen = []
         for i, (n, f, sc) in enumerate(ranked):
@@ -195,13 +208,54 @@ class Classifier:
                                        " ".join([ctx.get("title", ""), ctx.get("filename", ""),
                                                  views.get("front", "")])[:3000], t)
         segs = [(ctx.get("title", ""), 5.0), (ctx.get("abstract", "") + " " + ctx.get("tags", ""), 2.0),
-                (views.get("toc", ""), 1.5), (views.get("body", ""), 1.0)]
-        glob["place"] = self.places.find(segs)
-        glob["time"] = auxmod.time_aux(" ".join([ctx.get("title", ""), ctx.get("abstract", ""), views.get("toc", "")]), t)
+                (views.get("toc", ""), 1.5), (views.get("front", ""), 1.0), (views.get("body", ""), 1.0)]
+        glob["place"] = self.places.find(segs, lang)
+        glob["time"] = auxmod.time_aux(" ".join([ctx.get("abstract", ""), views.get("toc", "")]), t,
+                                       title=ctx.get("title", ""))
         glob = {k: v for k, v in glob.items() if v}
 
         suggestions = []
-        for rank, (n, f, sc, conf) in enumerate(chosen, 1):
+        # --- UDC de un catálogo bibliotecario (p. ej. Biblioteca Nacional de Polonia, campo MARC 080):
+        # es una clasificación hecha por catalogadores; si es válida en este árbol, va primero.
+        for code in (ctx.get("external_udc") or {}).get("codes", [])[:2]:
+            udc_ext = re.sub(r"[\[\]\s]", "", code)
+            issues = validate(udc_ext, t)
+            if udc_ext and not any(lv == "error" for lv, _ in issues) and \
+                    all(s["udc"] != udc_ext for s in suggestions):
+                from .notation import components
+                mains_ext = components(udc_ext).get("main", [])
+                suggestions.append({
+                    "rank": len(suggestions) + 1, "udc": udc_ext,
+                    "main": [{"code": c, "label": self._lbl(t.get(c)) if t.get(c) else c, "origin": "catalog",
+                              "path": [f"{x.notation} {self._lbl(x)}" for x in t.path(t.get(c))] if t.get(c) else []}
+                             for c in mains_ext],
+                    "aux": {}, "ver_tambien": [], "score": 1.0, "confidence": config.CATALOG_UDC_CONFIDENCE,
+                    "issues": [{"level": lv, "msg": m} for lv, m in issues],
+                    "explain": {"sim_node": 1.0, "origen": f"catálogo: {ctx['external_udc']['source']}"},
+                })
+        if music_sug:
+            vocal = music_sug["mains"][0].startswith(("782", "783", "784"))
+            # en una partitura el idioma solo cuenta si hay letra (obra vocal); el "tiempo" del texto (año de la
+            # edición) y la forma documental no aplican
+            maux = {k: v for k, v in glob.items() if k == "place" or (k == "lang" and vocal)}
+            udc = compose([{"code": c} for c in music_sug["mains"]],
+                          {k: v["code"] for k, v in maux.items() if k in config.AUX_ORDER})
+            issues = validate(udc, t)
+            if not any(lv == "error" for lv, _ in issues):
+                suggestions.append({
+                    "rank": len(suggestions) + 1, "udc": udc,
+                    "main": [{"code": c, "label": self._lbl(t.get(c)) if t.get(c) else c, "origin": "rules",
+                              "path": [f"{x.notation} {self._lbl(x)}" for x in t.path(t.get(c))] if t.get(c) else []}
+                             for c in music_sug["mains"]],
+                    "aux": maux, "ver_tambien": [], "score": 1.0, "confidence": config.SCORE_RULES_CONFIDENCE,
+                    "issues": [{"level": lv, "msg": m} for lv, m in issues],
+                    "explain": {"sim_node": 1.0, "origen": "partitura: " + "; ".join(music_sug["evidence"]),
+                                "detección": ctx["score"].get("why", "")},
+                })
+        for n, f, sc, conf in chosen:
+            if len(suggestions) >= want:                 # catálogo + partitura + embeddings = `want` en total
+                break
+            rank = len(suggestions) + 1
             mains = [{"code": n.notation}]
             per = {}
             for kind, nodes in (("special", self._special_nodes(n)), ("common", t.of_kind("common")),

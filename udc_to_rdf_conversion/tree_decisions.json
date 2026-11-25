@@ -1,0 +1,5 @@
+{
+ "_comment": "Excepciones a la colocación automática de udc_main_tree_fusion.py. 'exclude': notaciones vigentes del sitio que NO se añaden al árbol. 'parent': padre forzado {notación: padre}. Por defecto el padre se decide por la notación (rango más ajustado o prefijo más largo).",
+ "exclude": [],
+ "parent": {}
+}

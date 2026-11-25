@@ -27,19 +27,134 @@ String formatBytes(int n) {
   return '${v.toStringAsFixed(v >= 100 ? 0 : 1)} ${units[u]}';
 }
 
+double? _d(dynamic v) => (v as num?)?.toDouble();
+
+/// Where a value came from. 'manual' = typed by a person; anything else is automatic.
+const manualSource = 'manual';
+
+/// One field value with its provenance (item_fields row).
+class FieldValue {
+  final String value;
+  final String source;
+  final double? confidence;
+  final bool confirmed;
+  const FieldValue(this.value, {this.source = manualSource, this.confidence, this.confirmed = true});
+
+  factory FieldValue.fromJson(dynamic j) {
+    if (j is Map) {
+      return FieldValue(_s(j['value']),
+          source: _s(j['source']).isEmpty ? manualSource : _s(j['source']),
+          confidence: _d(j['confidence']),
+          confirmed: j['confirmed'] == true);
+    }
+    return FieldValue(_s(j));
+  }
+
+  bool get isAutomatic => source != manualSource;
+
+  Map<String, dynamic> toJson() =>
+      {'value': value, 'source': source, if (confidence != null) 'confidence': confidence};
+}
+
 class Creator {
-  String role;
-  String first;
-  String last;
-  Creator({this.role = 'author', this.first = '', this.last = ''});
+  String creatorType;
+  String firstName;
+  String lastName;
+  int fieldMode; // 0 = last + first, 1 = one field (institutions)
+  String source;
+  double? confidence;
+  bool confirmed;
+  Creator({
+    this.creatorType = 'author',
+    this.firstName = '',
+    this.lastName = '',
+    this.fieldMode = 0,
+    this.source = manualSource,
+    this.confidence,
+    this.confirmed = true,
+  });
 
   factory Creator.fromJson(Map<String, dynamic> j) => Creator(
-        role: _s(j['role']).isEmpty ? 'author' : _s(j['role']),
-        first: _s(j['first']),
-        last: _s(j['last']),
+        creatorType: _s(j['creator_type']).isEmpty ? 'author' : _s(j['creator_type']),
+        firstName: _s(j['first_name']),
+        lastName: _s(j['last_name']),
+        fieldMode: (j['field_mode'] as num?)?.toInt() ?? 0,
+        source: _s(j['source']).isEmpty ? manualSource : _s(j['source']),
+        confidence: _d(j['confidence']),
+        confirmed: j['confirmed'] == true,
       );
 
-  Map<String, dynamic> toJson() => {'role': role, 'first': first, 'last': last};
+  Map<String, dynamic> toJson() => {
+        'creator_type': creatorType,
+        'first_name': firstName,
+        'last_name': lastName,
+        'field_mode': fieldMode,
+        'source': source,
+        if (confidence != null) 'confidence': confidence,
+      };
+}
+
+/// A UDC notation of an item (item_udc row).
+class UdcValue {
+  final String notation;
+  final String source;
+  final double? confidence;
+  final bool confirmed;
+  const UdcValue(this.notation, {this.source = manualSource, this.confidence, this.confirmed = true});
+  factory UdcValue.fromJson(Map<String, dynamic> j) => UdcValue(_s(j['notation']),
+      source: _s(j['source']).isEmpty ? manualSource : _s(j['source']),
+      confidence: _d(j['confidence']),
+      confirmed: j['confirmed'] == true);
+  Map<String, dynamic> toJson() =>
+      {'notation': notation, 'source': source, if (confidence != null) 'confidence': confidence};
+}
+
+class TagValue {
+  final String name;
+  final String source;
+  const TagValue(this.name, {this.source = manualSource});
+  factory TagValue.fromJson(dynamic j) => j is Map
+      ? TagValue(_s(j['name']), source: _s(j['source']).isEmpty ? manualSource : _s(j['source']))
+      : TagValue(_s(j));
+  Map<String, dynamic> toJson() => {'name': name, 'source': source};
+}
+
+class Attachment {
+  final int id;
+  final String role; // main | supplementary
+  final String label;
+  final int position;
+  final String filename;
+  final String sha256;
+  final int size;
+  final String mime;
+  final int? pages;
+  final int? coverPage;
+  final String? deletedAt;
+  Attachment.fromJson(Map<String, dynamic> j)
+      : id = (j['id'] as num).toInt(),
+        role = _s(j['role']),
+        label = _s(j['label']),
+        position = (j['position'] as num?)?.toInt() ?? 0,
+        filename = _s(j['filename']),
+        sha256 = _s(j['sha256']),
+        size = (j['size'] as num?)?.toInt() ?? 0,
+        mime = _s(j['mime']),
+        pages = (j['pages'] as num?)?.toInt(),
+        coverPage = (j['cover_page'] as num?)?.toInt(),
+        deletedAt = j['deleted_at'] as String?;
+
+  bool get isMain => role == 'main';
+}
+
+class ItemNote {
+  final int id;
+  final String body;
+  final String modifiedAt;
+  ItemNote.fromJson(Map<String, dynamic> j)
+      : id = (j['id'] as num).toInt(),
+        body = _s(j['body']),
+        modifiedAt = _s(j['modified_at']);
 }
 
 typedef Spans = List<List<int>>;
@@ -52,17 +167,16 @@ class Item {
   final String title;
   final int? year;
   final String language;
-  final String udc;
+  final Map<String, FieldValue> fields;
   final List<Creator> creators;
-  final Map<String, String> data;
-  final String filename;
-  final String sha256;
-  final int size;
-  final int? pages;
-  final int coverPage;
+  final List<TagValue> tags;
+  final List<UdcValue> udc;
+  final List<Attachment> attachments;
+  final List<ItemNote> notes;
   final String addedAt;
   final String? deletedAt;
   final String creatorsText;
+  final String udcText;
   final Map<String, Spans> matches;
 
   Item.fromJson(Map<String, dynamic> j)
@@ -73,23 +187,48 @@ class Item {
         title = _s(j['title']),
         year = (j['year'] as num?)?.toInt(),
         language = _s(j['language']),
-        udc = _s(j['udc']),
-        creators = ((j['creators'] as List?) ?? [])
-            .map((e) => Creator.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList(),
-        data = {
-          for (final e in ((j['data'] as Map?) ?? {}).entries)
-            e.key.toString(): _s(e.value)
+        fields = {
+          for (final e in ((j['fields'] as Map?) ?? {}).entries) e.key.toString(): FieldValue.fromJson(e.value)
         },
-        filename = _s(j['filename']),
-        sha256 = _s(j['sha256']),
-        size = (j['size'] as num?)?.toInt() ?? 0,
-        pages = (j['pages'] as num?)?.toInt(),
-        coverPage = (j['cover_page'] as num?)?.toInt() ?? 1,
+        creators = [
+          for (final e in (j['creators'] as List?) ?? []) Creator.fromJson(Map<String, dynamic>.from(e as Map))
+        ],
+        tags = [for (final e in (j['tags'] as List?) ?? []) TagValue.fromJson(e)],
+        udc = [for (final e in (j['udc'] as List?) ?? []) UdcValue.fromJson(Map<String, dynamic>.from(e as Map))],
+        attachments = [
+          for (final e in (j['attachments'] as List?) ?? []) Attachment.fromJson(Map<String, dynamic>.from(e as Map))
+        ],
+        notes = [for (final e in (j['notes'] as List?) ?? []) ItemNote.fromJson(Map<String, dynamic>.from(e as Map))],
         addedAt = _s(j['added_at']),
         deletedAt = j['deleted_at'] as String?,
         creatorsText = _s(j['creators_text']),
+        udcText = _s(j['udc_text']),
         matches = _parseMatches(j['matches']);
+
+  Attachment? get main {
+    for (final a in attachments) {
+      if (a.isMain) return a;
+    }
+    return null;
+  }
+
+  /// Supplementary files not in the trash, in their order.
+  List<Attachment> get supplementary =>
+      [for (final a in attachments) if (!a.isMain && a.deletedAt == null) a]
+        ..sort((a, b) => a.position.compareTo(b.position));
+
+  // main file shortcuts (cache, list rows)
+  String get filename => main?.filename ?? '';
+  String get sha256 => main?.sha256 ?? '';
+  int get size => main?.size ?? 0;
+  int? get pages => main?.pages;
+  int get coverPage => main?.coverPage ?? 1;
+
+  String value(String field) => fields[field]?.value ?? '';
+
+  /// Values written by an automatic process that no person has confirmed yet.
+  bool get hasUnconfirmed =>
+      fields.values.any((v) => !v.confirmed) || creators.any((c) => !c.confirmed) || udc.any((u) => !u.confirmed);
 
   static Map<String, Spans> _parseMatches(dynamic m) {
     final out = <String, Spans>{};
@@ -105,40 +244,93 @@ class Item {
 }
 
 class FieldDef {
-  final String key;
+  final String code;
   final String label;
-  final String kind;
-  const FieldDef(this.key, this.label, this.kind);
+  final String kind; // text | longtext | date | url
+  final String help;
+  final String? base; // base field when this is a variant (university -> publisher)
+  final bool hidden;
+  final bool obsolete;
+  const FieldDef(this.code, this.label, this.kind,
+      {this.help = '', this.base, this.hidden = false, this.obsolete = false});
+
+  factory FieldDef.fromJson(Map<String, dynamic> j) => FieldDef(_s(j['code']), _s(j['label']), _s(j['kind']),
+      help: _s(j['help']), base: j['base'] as String?, hidden: j['hidden'] == true, obsolete: j['obsolete'] == true);
+}
+
+class CreatorTypeDef {
+  final String code;
+  final String label;
+  final bool primary;
+  final String help;
+  const CreatorTypeDef(this.code, this.label, {this.primary = false, this.help = ''});
+  factory CreatorTypeDef.fromJson(Map<String, dynamic> j) =>
+      CreatorTypeDef(_s(j['code']), _s(j['label']), primary: j['primary'] == true, help: _s(j['help']));
 }
 
 class TypeDef {
   final String code;
   final String label;
-  final List<String> fields;
-  const TypeDef(this.code, this.label, this.fields);
+  final String help;
+  final bool enabled;
+  final List<FieldDef> fields; // Zotero's form order
+  final List<CreatorTypeDef> creatorTypes;
+  const TypeDef(this.code, this.label, this.fields, this.creatorTypes, {this.help = '', this.enabled = true});
+
+  factory TypeDef.fromJson(Map<String, dynamic> j) => TypeDef(
+        _s(j['code']),
+        _s(j['label']),
+        [for (final f in (j['fields'] as List? ?? [])) FieldDef.fromJson(Map<String, dynamic>.from(f as Map))],
+        [
+          for (final c in (j['creator_types'] as List? ?? []))
+            CreatorTypeDef.fromJson(Map<String, dynamic>.from(c as Map))
+        ],
+        help: _s(j['help']),
+        enabled: j['enabled'] == true,
+      );
+
+  /// The type's own field for a base field: thesis + 'publisher' -> 'university'.
+  String? fieldFor(String base) {
+    for (final f in fields) {
+      if (f.code == base && f.base == null) return f.code;
+    }
+    for (final f in fields) {
+      if (f.base == base) return f.code;
+    }
+    return null;
+  }
+
+  FieldDef? field(String code) {
+    for (final f in fields) {
+      if (f.code == code) return f;
+    }
+    return null;
+  }
+
+  String get titleField => fieldFor('title') ?? 'title';
+
+  String get primaryCreator {
+    for (final c in creatorTypes) {
+      if (c.primary) return c.code;
+    }
+    return creatorTypes.isEmpty ? 'author' : creatorTypes.first.code;
+  }
+
+  bool allowsCreator(String code) => creatorTypes.any((c) => c.code == code);
 }
 
 class SchemaInfo {
   final List<TypeDef> types;
-  final Map<String, FieldDef> fields;
-  final List<String> roles;
-  SchemaInfo(this.types, this.fields, this.roles);
+  SchemaInfo(this.types);
 
-  factory SchemaInfo.fromJson(Map<String, dynamic> j) => SchemaInfo(
-        (j['types'] as List)
-            .map((t) => TypeDef(_s(t['code']), _s(t['label']),
-                (t['fields'] as List).map((e) => e.toString()).toList()))
-            .toList(),
-        {
-          for (final e in (j['fields'] as Map).entries)
-            e.key.toString(): FieldDef(
-                e.key.toString(), _s(e.value['label']), _s(e.value['kind']))
-        },
-        (j['roles'] as List).map((e) => e.toString()).toList(),
-      );
+  factory SchemaInfo.fromJson(Map<String, dynamic> j) =>
+      SchemaInfo([for (final t in (j['types'] as List)) TypeDef.fromJson(Map<String, dynamic>.from(t as Map))]);
 
-  factory SchemaInfo.empty() =>
-      SchemaInfo([const TypeDef('other', 'Other', [])], {}, ['author']);
+  factory SchemaInfo.empty() => SchemaInfo([]);
+
+  /// Types that can be chosen for a new item, alphabetical (as in Zotero's menu).
+  List<TypeDef> get enabledTypes =>
+      [for (final t in types) if (t.enabled) t]..sort((a, b) => a.label.compareTo(b.label));
 
   TypeDef? type(String code) {
     for (final t in types) {
@@ -148,6 +340,40 @@ class SchemaInfo {
   }
 
   String typeLabel(String code) => type(code)?.label ?? code;
+
+  String fieldLabel(String code) {
+    for (final t in types) {
+      final f = t.field(code);
+      if (f != null) return f.label;
+    }
+    return code;
+  }
+
+  String creatorLabel(String code) {
+    for (final t in types) {
+      for (final c in t.creatorTypes) {
+        if (c.code == code) return c.label;
+      }
+    }
+    return code;
+  }
+
+  /// Fields offered by the search box: a base field stands for its variants (Publisher also finds
+  /// University, Label, Institution...). Only fields of enabled types; hidden ones are left out.
+  List<(String, String)> get searchFields {
+    final seen = <String, String>{};
+    for (final t in enabledTypes) {
+      for (final f in t.fields) {
+        if (f.hidden) continue;
+        final code = f.base ?? f.code;
+        seen.putIfAbsent(code, () {
+          final l = fieldLabel(code); // 'authority' and 'medium' are only base fields: use the variant's label
+          return l == code ? f.label : l;
+        });
+      }
+    }
+    return [for (final e in seen.entries) (e.key, e.value)]..sort((a, b) => a.$2.compareTo(b.$2));
+  }
 }
 
 class UdcNode {

@@ -36,6 +36,7 @@ class Feedback:
                         (sha1, str(path), title or "", np.asarray(emb, dtype=np.float32).tobytes(), notation,
                          json.dumps(main_codes), json.dumps(aux), ts))
         self.db.execute("DELETE FROM events WHERE sha1=?", (sha1,))
+        self.db.execute("DELETE FROM events WHERE sha1=?", (sha1,))   # revisar de nuevo reemplaza, no duplica
         self.db.execute("INSERT INTO events(sha1,candidates,suggested,chosen_rank,ts) VALUES(?,?,?,?,?)",
                         (sha1, json.dumps(candidates), json.dumps(suggested), rank, ts))
         self.db.commit()

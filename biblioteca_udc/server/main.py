@@ -39,4 +39,6 @@ def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=config.HOST, port=config.PORT)
+    host = config.listen_host()
+    print(f"Biblioteca UDC listening on http://{host}:{config.PORT}")
+    uvicorn.run(app, host=host, port=config.PORT)

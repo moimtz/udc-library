@@ -11,16 +11,10 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 import config
+from . import locales
 from .pdfio import Line, PdfDoc
 
 # ------------------------------------------------------------------ utilidades
-MONTHS = {
-    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6, "july": 7, "august": 8,
-    "september": 9, "october": 10, "november": 11, "december": 12, "jan": 1, "feb": 2, "mar": 3, "apr": 4,
-    "jun": 6, "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
-    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
-    "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
-}
 YEAR_MAX = datetime.date.today().year + 1
 
 
@@ -28,20 +22,31 @@ def squash(s: str) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
 
 
-def norm_date(s: str) -> str | None:
+# conectores entre día, mes y año ("12 de marzo de 1999", "12. März 1999", "1 di marzo 1999")
+_DATE_LINK = r"(?:\s+(?:de|del|di|du|of|van|von)\s+|\.?\s+|\s*,\s*)"
+
+
+def norm_date(s: str, lang: str | None = None) -> str | None:
+    """Fecha -> 'AAAA-MM-DD' / 'AAAA-MM' / 'AAAA'. Meses en inglés y en el idioma del documento (CLDR)."""
+    months = locales.month_names(lang)
+
+    def mon(w):
+        return months.get(locales.fold(w))
+
     s = squash(s)
     m = re.search(r"\b((?:1[5-9]|20)\d{2})-(\d{2})-(\d{2})\b", s)
     if m:
         return "-".join(m.groups())
-    m = re.search(r"\b(\d{1,2})\s+(?:de\s+)?([A-Za-záéíóú]+)\.?,?\s+(?:de\s+)?((?:1[5-9]|20)\d{2})\b", s)
-    if m and m.group(2).lower() in MONTHS:
-        return f"{m.group(3)}-{MONTHS[m.group(2).lower()]:02d}-{int(m.group(1)):02d}"
-    m = re.search(r"\b([A-Za-záéíóú]+)\.?\s+(\d{1,2}),?\s+((?:1[5-9]|20)\d{2})\b", s)
-    if m and m.group(1).lower() in MONTHS:
-        return f"{m.group(3)}-{MONTHS[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
-    m = re.search(r"\b([A-Za-záéíóú]+)\s+(?:de\s+)?((?:1[5-9]|20)\d{2})\b", s)
-    if m and m.group(1).lower() in MONTHS:
-        return f"{m.group(2)}-{MONTHS[m.group(1).lower()]:02d}"
+    # con nombre de mes el año puede ser antiguo (1000-2099): "12 de octubre de 1492"
+    m = re.search(rf"\b(\d{{1,2}})\.?{_DATE_LINK}([^\W\d_]+)\.?{_DATE_LINK}((?:1\d|20)\d{{2}})\b", s)
+    if m and mon(m.group(2)):
+        return f"{m.group(3)}-{mon(m.group(2)):02d}-{int(m.group(1)):02d}"
+    m = re.search(r"\b([^\W\d_]+)\.?\s+(\d{1,2}),?\s+((?:1\d|20)\d{2})\b", s)
+    if m and mon(m.group(1)):
+        return f"{m.group(3)}-{mon(m.group(1)):02d}-{int(m.group(2)):02d}"
+    m = re.search(rf"\b([^\W\d_]+)\.?{_DATE_LINK}((?:1\d|20)\d{{2}})\b", s)
+    if m and mon(m.group(1)):
+        return f"{m.group(2)}-{mon(m.group(1)):02d}"
     m = re.search(r"\b((?:1[5-9]|20)\d{2})\b", s)
     return m.group(1) if m else None
 
@@ -65,15 +70,16 @@ _langid = None
 
 
 def _get_langid():
-    """Crea (una sola vez) el identificador de py3langid, limitado a los idiomas de config.LANG_NAMES."""
+    """Crea (una sola vez) el identificador de py3langid: todos sus idiomas (~140), o los de
+    config.LANGID_LANGS si se quiere restringir."""
     global _langid
     if _langid is None:
         from py3langid.langid import LanguageIdentifier, MODEL_FILE
         ident = LanguageIdentifier.from_model_file(MODEL_FILE, norm_probs=True)  # probabilidades 0..1
-        known = set(ident.nb_classes)                       # idiomas que trae el modelo
-        langs = [c for c in config.LANG_NAMES if c in known]
-        if langs:
-            ident.set_languages(langs)
+        if config.LANGID_LANGS:
+            langs = [c for c in config.LANGID_LANGS if c in set(ident.nb_classes)]
+            if langs:
+                ident.set_languages(langs)
         _langid = ident
     return _langid
 
@@ -84,6 +90,10 @@ def detect_language(text: str) -> tuple[str | None, float, str]:
         return None, 0.0, "none"
     try:  # 1) py3langid
         lang, prob = _get_langid().classify(text)
+        if lang == "zxx":                                   # "sin contenido lingüístico"
+            return None, 0.0, "py3langid"
+        if prob < config.LANG_MIN_CONF:                     # con ~140 idiomas, una conjetura floja es azar
+            return None, round(float(prob), 4), "py3langid"
         return lang, round(float(prob), 4), "py3langid"
     except ImportError:
         pass
@@ -141,14 +151,19 @@ def detect_doctype(text: str, ids: dict, n_pages: int) -> tuple[str, float, dict
     t = text.lower()
     scores = {}
     for typ, rules in config.DOCTYPE_RULES.items():
-        scores[typ] = sum(w for rx, w in rules if re.search(rx, t))
+        hits = [bool(re.search(rx, t)) for rx, _ in rules]
+        if typ in config.DOCTYPE_NEEDS_FIRST and not hits[0]:
+            scores[typ] = 0            # p. ej. tesis: sin la palabra "tesis/thesis/…", universidad+maestría no basta
+            continue
+        scores[typ] = sum(w for (_, w), h in zip(rules, hits) if h)
     if ids.get("arxiv"):
         scores["preprint"] = scores.get("preprint", 0) + 4
     if ids.get("isbn"):
         scores["book"] = scores.get("book", 0) + 1
     if n_pages >= config.BOOK_MIN_PAGES:
         scores["book"] = scores.get("book", 0) + 2
-    ranked = sorted(scores.items(), key=lambda kv: -kv[1])
+    # en empate gana el tipo por defecto (libro): otro tipo necesita MÁS evidencia, no la misma
+    ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0] != config.DEFAULT_DOCTYPE))
     best, bs = ranked[0]
     second = ranked[1][1] if len(ranked) > 1 else 0
     if bs < 2:
@@ -159,10 +174,15 @@ def detect_doctype(text: str, ids: dict, n_pages: int) -> tuple[str, float, dict
 # ------------------------------------------------------------------ títulos y autores
 NOISE_LINE = re.compile(r"^(?:\W*\d+\W*|page\s*\d+.*|www\.|https?:|doi:|issn|isbn|\S+@\S+|.*©.*|.*all rights reserved.*)$", re.I)
 ORG_RE = re.compile(rf"\b(?:{config.ORG_HINTS})\b", re.I)
-NAME_TOKEN = r"(?:[A-ZÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÇ][a-záéíóúñüàèìòùâêîôûç'’\-]+|[A-Z]\.)"
-PARTICLE = r"(?:de|del|la|las|los|van|von|der|da|di|dos|do|le|el|bin|al)"
+# Mayúsculas y minúsculas de los alfabetos latino (con Latin-1 y Extended-A), griego y cirílico.
+_UP = "A-ZÀ-ÖØ-ÞĀ-ŽΆ-ΫЀ-Я"
+_LOW = "a-zß-öø-ÿā-žά-ώа-џ"
+NAME_TOKEN = rf"(?:[{_UP}][{_LOW}'’]+(?:-[{_UP}]?[{_LOW}'’]+)*|[{_UP}]\.(?:-[{_UP}]\.)?)"   # Jean-Paul, J.-P.
+PARTICLES = {"de", "del", "la", "las", "los", "van", "von", "der", "den", "ten", "ter", "zu", "da", "di",
+             "della", "dello", "degli", "dos", "do", "das", "du", "des", "le", "el", "bin", "ibn", "ben", "al",
+             "abu", "af", "av"}
+PARTICLE = "(?:" + "|".join(sorted(PARTICLES, key=len, reverse=True)) + ")"
 NAME_RE = re.compile(rf"^{NAME_TOKEN}(?:\s+(?:{PARTICLE}\s+)*{NAME_TOKEN}){{1,4}}$")
-PARTICLES = {"de", "del", "la", "las", "los", "van", "von", "der", "da", "di", "dos", "do", "le", "el", "bin", "al"}
 
 
 def _usable(l: Line) -> bool:
@@ -211,13 +231,18 @@ def _title_case_if_upper(s: str) -> str:
     return s.title() if s.isupper() and len(s) > 4 else s
 
 
+# "y" (es), "e" (it/pt), "et" (fr/la), "und" (de), "en" (nl), "och" (sv), "og" (da/no), "i" (pl/ca), "и" (ru)...
+_AND = r"and|y|e|et|und|en|och|og|ja|és|ve|i|a|и|і|και|ו"
+_BY = r"by|por|par|von|di|da|door|av|af|autor(?:es|en|e)?|auteurs?|authors?|автор[ыа]?"
+
+
 def parse_names(text: str) -> list[str]:
-    t = re.sub(r"^\s*(?:by|por|autor(?:es)?|authors?)\s*[:\-]?\s*", "", text, flags=re.I)
+    t = re.sub(rf"^\s*(?:{_BY})\s*[:\-]?\s*", "", text, flags=re.I)
     t = re.sub(r"\S+@\S+|[\d*†‡§¶]+", " ", t)
     t = squash(t)
     if not t or len(t) > 160 or ORG_RE.search(t):
         return []
-    parts = [p.strip(" .") for p in re.split(r"\s*(?:,|;|&|\band\b|\by\b|\be\b|·|\|)\s*", t) if p.strip(" .")]
+    parts = [p.strip(" .") for p in re.split(rf"\s*(?:,|;|&|·|\||(?<!\w)(?:{_AND})(?!\w))\s*", t) if p.strip(" .")]
     if len(parts) >= 2 and len(parts) % 2 == 0 and all(len(p.split()) == 1 for p in parts):
         parts = [f"{parts[i + 1]} {parts[i]}" for i in range(0, len(parts), 2)]  # "Pérez, Juan"
     out = []
@@ -230,7 +255,7 @@ def parse_names(text: str) -> list[str]:
 
 def parse_meta_authors(raw: str) -> list[str]:
     """Campo 'author' del PDF: 'Zill, Dennis G.;' o 'Pérez, Juan; Gómez, Ana' -> ['Dennis G. Zill', ...]."""
-    parts = [p.strip(" ,") for p in re.split(r";|\s+&\s+|\band\b", raw or "") if p.strip(" ,")]
+    parts = [p.strip(" ,") for p in re.split(r";|\s+&\s+|\s(?:and|y|et|und|e|и)\s", raw or "") if p.strip(" ,")]
     if parts and all(p.count(",") == 1 for p in parts):  # formato "Apellido, Nombre"
         names = [" ".join(reversed([x.strip() for x in p.split(",")])) for p in parts]
         names = [_title_case_if_upper(n) for n in names]
@@ -286,9 +311,9 @@ def ner_people(text: str) -> list[str]:
 def pick_year(front: str, meta: dict) -> tuple[str | None, float, str]:
     pats = [
         (r"(?:©|\(c\)|copyright)\s*(?:by\s+)?[^\d\n]{0,40}((?:1[5-9]|20)\d{2})", 0.8, "regex:copyright"),
-        (r"(?:published|publicado|publicaci[oó]n|fecha|date|received|accepted|first published)[^\n\d]{0,25}"
-         r"(?:\d{1,2}\s+(?:de\s+)?\w+\s+(?:de\s+)?)?((?:1[5-9]|20)\d{2})", 0.6, "regex:fecha"),
-        (r"(?:edici[oó]n|edition)[^\n\d]{0,20}((?:1[5-9]|20)\d{2})", 0.6, "regex:edicion"),
+        (rf"(?:{_PUBLISHED_WORDS})[^\n\d]{{0,25}}"
+         r"(?:\d{1,2}\.?\s+(?:de\s+|di\s+)?\w+\.?\s+(?:de\s+)?)?((?:1[5-9]|20)\d{2})", 0.6, "regex:fecha"),
+        (rf"(?:{_EDITION_WORDS})[^\n\d]{{0,20}}((?:1[5-9]|20)\d{{2}})", 0.6, "regex:edicion"),
     ]
     for rx, c, src in pats:
         m = re.search(rx, front, re.I)
@@ -302,29 +327,51 @@ def pick_year(front: str, meta: dict) -> tuple[str | None, float, str]:
     return (m.group(1), 0.15, "pdfmeta:creationDate") if m else (None, 0.0, "")
 
 
+# Vocabulario de secciones en los idiomas más comunes (el resto se clasifica igual por embeddings).
+_ABSTRACT_WORDS = (r"abstract|summary|resumen|r[ée]sum[ée]|resumo|riassunto|sommario|zusammenfassung|kurzfassung|"
+                   r"samenvatting|sammanfattning|sammendrag|resum[ée]|tiivistelm[äa]|streszczenie|abstrakt|"
+                   r"[öo]zet|περίληψη|аннотация|реферат|резюме|ملخص|תקציר|摘要|要旨|要約|초록|요약")
+_KEYWORDS_WORDS = (r"keywords?|key words|palabras clave|mots[- ]cl[ée]s|schl[üu]sselw[öo]rter|schlagw[öo]rter|"
+                   r"parole chiave|palavras[- ]chave|trefwoorden|nyckelord|asiasanat|s[łl]owa kluczowe|"
+                   r"anahtar kelimeler|λέξεις[- ]κλειδιά|ключевые слова|الكلمات المفتاحية|מילות מפתח|"
+                   r"关键词|關鍵詞|キーワード|주제어|핵심어")
+_INTRO_WORDS = (r"introduction|introducci[oó]n|introduzione|einleitung|einf[üu]hrung|introdu[cç][aã]o|inleiding|"
+                r"wst[ęe]p|введение|giriş|εισαγωγή|مقدمة|מבוא|引言|绪论|はじめに|序論|서론")
+_PUBLISHED_WORDS = (r"published|first published|publicado|publicaci[oó]n|fecha|date|received|accepted|publi[ée]|"
+                    r"parution|ver[öo]ffentlicht|erschienen|pubblicato|pubblicazione|publica[cç][aã]o|"
+                    r"uitgegeven|utgiven|wydano|опубликовано|издано")
+_EDITION_WORDS = (r"edition|edici[oó]n|[ée]dition|edizione|edi[cç][aã]o|auflage|aufl\.|uitgave|druk|upplaga|"
+                  r"udgave|painos|wydanie|издание|baskı|版")
+
+
 def pick_abstract(text: str) -> str | None:
-    m = re.search(r"(?is)\b(?:abstract|resumen|summary|résumé)\b[\s:.\-—]*(.{200,2500}?)"
-                  r"(?=\b(?:keywords?|palabras clave|key words|introduction|introducci[oó]n|1\.\s)|\Z)", text)
+    m = re.search(rf"(?is)(?<!\w)(?:{_ABSTRACT_WORDS})(?!\w)[\s:.\-—]*(.{{200,2500}}?)"
+                  rf"(?=(?<!\w)(?:{_KEYWORDS_WORDS}|{_INTRO_WORDS}|1\.\s)|\Z)", text)
     return squash(m.group(1)) if m else None
 
 
 def pick_keywords(text: str) -> list[str]:
-    m = re.search(r"(?is)\b(?:keywords?|key words|palabras clave)\s*[:\-—]\s*(.{5,300}?)(?:\n\s*\n|\n[A-ZÁÉÍÓÚ0-9]|\Z)", text)
+    m = re.search(rf"(?is)(?<!\w)(?:{_KEYWORDS_WORDS})\s*[:\-—：]\s*(.{{5,300}}?)(?:\n\s*\n|\n[^\W_a-z]|\Z)", text)
     if not m:
         return []
-    return [k.strip(" .") for k in re.split(r"[,;·]", squash(m.group(1))) if 2 < len(k.strip()) < 60][:12]
+    return [k.strip(" .") for k in re.split(r"[,;·、，；]", squash(m.group(1))) if 1 < len(k.strip()) < 60][:12]
 
 
-PUBLISHER_RE = re.compile(r"(?:editorial|ediciones|[ée]ditions|verlag|publishers?|publishing|\bpress\b|springer|elsevier|wiley|"
-                          r"pearson|mcgraw|routledge|taylor & francis|\bsage\b|alianza|fondo de cultura|siglo xxi|ieee|\bacm\b)", re.I)
+PUBLISHER_RE = re.compile(r"(?:editorial|ediciones|[ée]ditions?|[ée]diteur|verlag|edizioni|editrice|editore|"
+                          r"editora|uitgeverij|f[öo]rlag|forlag|wydawnictwo|kustannus|yay[ıi]nlar[ıi]|издательство|"
+                          r"publishers?|publishing|\bpress\b|springer|elsevier|wiley|pearson|mcgraw|routledge|"
+                          r"taylor & francis|\bsage\b|gallimard|hachette|suhrkamp|einaudi|mondadori|alianza|"
+                          r"fondo de cultura|siglo xxi|ieee|\bacm\b)|出版社|出版", re.I)
+_RIGHTS_RE = re.compile(r"\b(?:all rights|derechos|droits|rechte|diritti|direitos|права|isbn)\b", re.I)
 
 
 def pick_publisher(text: str) -> str | None:
     for ln in text.splitlines():
         ln = squash(ln)
-        if 3 < len(ln) <= 90 and PUBLISHER_RE.search(ln) and not re.search(r"\b(?:all rights|derechos|isbn)\b", ln, re.I):
+        if 3 < len(ln) <= 90 and PUBLISHER_RE.search(ln) and not _RIGHTS_RE.search(ln):
             ln = re.sub(r"^(?:©|\(c\)|copyright)?\s*(?:19|20)?\d{0,4}\s*", "", ln, flags=re.I)
-            return re.sub(r"^(?:published by|publicado por|editorial:)\s*", "", ln, flags=re.I) or None
+            return re.sub(r"^(?:published by|publicado por|publi[ée] par|ver[öo]ffentlicht (?:von|bei)|"
+                          r"pubblicato da|editorial:|verlag:)\s*", "", ln, flags=re.I) or None
     return None
 
 
@@ -378,10 +425,10 @@ def split_people(raw: str) -> list[str]:
 
 
 # ------------------------------------------------------------------ edición/año pegados al título
-_EDITION_RE = re.compile(r"(?i)\b(\d{1,2})\s*(?:st|nd|rd|th|ra|da|ta|va|na|a|ª|º|°)?\.?\s*"
-                         r"(?:edition|edici[oó]n|ed\.|aufl(?:age|\.))")
-_ED_PAREN = re.compile(r"(?i)^(\d{1,2})\s*(?:st|nd|rd|th|ra|da|ta|va|na|a|ª|º|°)?\.?"
-                       r"(?:\s*(?:edition|edici[oó]n|ed\.?|aufl(?:age|\.)?))?$")
+# sufijos ordinales: en (6th), es (6a, 6ª), fr (6e, 6ème), it/pt (6ª, 6º), de/nl/pl/ru (6.), ru (6-е)
+_ORD = r"(?:st|nd|rd|th|ra|da|ta|va|na|a|ª|º|°|e|ème|eme|er|re|-?е|-?я)?"
+_EDITION_RE = re.compile(rf"(?i)\b(\d{{1,2}})\s*{_ORD}\.?\s*(?:{_EDITION_WORDS}|ed\.)")
+_ED_PAREN = re.compile(rf"(?i)^(\d{{1,2}})\s*{_ORD}\.?(?:\s*(?:{_EDITION_WORDS}|ed\.?))?$")
 _YEAR = r"(?:1[5-9]|20)\d{2}"
 
 
@@ -411,7 +458,7 @@ def split_title_extras(s: str) -> tuple[str, str | None, str | None]:
 # descarga. Solo gana a otras fuentes cuando el propio texto del PDF lo confirma.
 _FN_JUNK = re.compile(r"(?i)\b(?:imslp\d+|pmlp\d+|z-?library|z-?lib(?:\.org)?|libgen(?:\.\w+)?|b-ok(?:\.\w+)?|"
                       r"ebook|pdfdrive|annas?-archive|www\.\S+|\S+\.(?:com|org|net|info)|[0-9a-f]{16,})\b")
-_FN_TOK = r"[A-ZÁÉÍÓÚÑÜÀÈÌÒÙÂÊÎÔÛÇÖÄ][\w'’\-]*\.?"
+_FN_TOK = rf"[{_UP}][\w'’\-]*\.?"
 
 
 def _fold(s: str) -> str:
@@ -542,6 +589,19 @@ def build_record(pdf: PdfDoc, use_ner: bool = False) -> dict:
     lang, lang_conf, lang_src = detect_language(head_all or tail_all)
     # el nombre del archivo también da pistas del tipo ("ASME Y14.5", "Handbook", "Tesis")
     dtype, dt_conf, dt_scores = detect_doctype(front + "\n" + Path(pdf.path).stem.replace("_", " "), ids, pdf.n_pages)
+    # Partitura: manda la detección visual de pentagramas (ver music.py); las palabras ("Allegro", "piano")
+    # aparecen también en libros sobre música, así que solas ya no bastan.
+    score_why = ""
+    if pdf.staff is not None:
+        from . import music
+        is_score, score_why = music.decide(pdf.staff, pdf.meta.get("title", ""), Path(pdf.path).stem,
+                                           pdf.meta.get("producer", ""))
+        if is_score:
+            dtype, dt_conf = "score", 0.9
+        elif dtype == "score":
+            rest = {k: v for k, v in dt_scores.items() if k != "score"}
+            best = max(rest, key=lambda k: (rest[k], k == config.DEFAULT_DOCTYPE)) if rest else None
+            dtype = best if best and rest[best] >= 2 else config.DEFAULT_DOCTYPE
     is_score = dtype == "score"
     item_type = config.SCORE_ITEM_TYPE if is_score else dtype
     if item_type not in config.ZOTERO_ITEM_TYPES:
@@ -574,7 +634,7 @@ def build_record(pdf: PdfDoc, use_ner: bool = False) -> dict:
             pdf.warnings.append("--ner pedido pero falta 'gliner'.")
         except Exception as e:  # noqa: BLE001
             pdf.warnings.append(f"NER falló: {e}")
-    role = "inventor" if dtype == "patent" else "author"
+    role = config.PRIMARY_CREATOR.get(item_type, "author")   # inventor, artist, cartographer, presenter...
     f.put("creators", [name_to_creator(n, role) for n in people], psrc, pconf)
     if pdf.meta.get("author"):  # siempre como candidato: el nombre del archivo puede confirmarlo
         f.put("creators", [name_to_creator(n, role) for n in parse_meta_authors(pdf.meta["author"])], "pdfmeta", 0.4)
@@ -629,14 +689,14 @@ def build_record(pdf: PdfDoc, use_ner: bool = False) -> dict:
         jl = next((squash(l) for l in lines_front[:15] if re.search(r"\b(?:journal|revista)\b", l, re.I) and len(squash(l)) < 90), None)
         f.put("publicationTitle", jl, "regex", 0.3)
     if is_score:
-        extra = ["Tipo: partitura"]
+        extra = [config.SCORE_EXTRA]
         m = re.search(r"\bop(?:us|\.)\s?(\d+[a-z]?)", front, re.I)
         if m:
             extra.append(f"Opus: {m.group(1)}")
         ins = sorted({w.lower() for w in re.findall(r"\b(piano|violin|violín|cello|guitar|guitarra|flute|flauta|orchestra|orquesta|voice|voz|choir|coro)\b", front, re.I)})
         if ins:
-            extra.append("Instrumentación: " + ", ".join(ins))
-        f.put("extra", "; ".join(extra), "regex", 0.4)
+            extra.append("Instrumentation: " + ", ".join(ins))
+        f.put("extra", "\n".join(extra), "regex", 0.4)   # Extra de Zotero: una línea "Nombre: valor" por dato
         m = re.search(r"(?:composer|compositor|m[uú]sica de|music by|compuesta por)\s*[:\-]?\s*([^\n]{3,60})", front, re.I)
         if m and parse_names(m.group(1)):
             f.put("creators", [name_to_creator(n) for n in parse_names(m.group(1))], "regex:composer", 0.6)
@@ -651,6 +711,9 @@ def build_record(pdf: PdfDoc, use_ner: bool = False) -> dict:
                       "subtype": "score" if is_score else None},
         "fields": fields, "unmapped": unmapped, "identifiers": ids,
         "missing_critical": missing, "doc_language": lang,
+        "score": ({"why": score_why, "per_system": pdf.staff.per_system,
+                   "score_pages": f"{pdf.staff.score_pages}/{pdf.staff.pages_checked}"} if is_score and pdf.staff
+                  else ({"why": "palabras clave"} if is_score else None)),
     }
 
 
@@ -667,7 +730,9 @@ def build_views(pdf: PdfDoc, rec: dict) -> dict:
     abstract = f.get("abstractNote", {}).get("value", "")
     tags = ", ".join(f.get("tags", {}).get("value", []))
     toc = "; ".join(t[1] for t in pdf.toc)[:3000]
-    front = " ".join(x for x in (title, abstract, tags) if x) or _clean("\n".join(pdf.head_text[:2]), 2000)
+    front = " ".join(x for x in (title, abstract, tags) if x)
+    if len(front) < config.FRONT_MIN_CHARS:     # sin título/resumen fiable (p. ej. portada escaneada): el texto
+        front = (front + " " + _clean("\n".join(pdf.head_text[:2]), 2000)).strip()   # de las primeras páginas
     body = _clean("\n".join(pdf.head_text[2:]), 3000)
     tail = _clean("\n".join(pdf.tail_text[-2:]), 1500)
     return {"front": front, "toc": toc, "body": body, "tail": tail}

@@ -8,7 +8,10 @@ que el RDF reproduce el .txt original y para revisar las traducciones.
 import argparse
 from pathlib import Path
 
-from udc_merge import natural_key, read_rdf
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "modules"))
+from udc_merge import natural_key, read_rdf  # noqa: E402
 
 
 def export(rdf, out, lang="en"):

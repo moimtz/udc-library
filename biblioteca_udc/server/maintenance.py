@@ -11,7 +11,8 @@ from db import connect
 
 
 def purge_trash() -> int:
-    from routes_library import purge_item
+    """Delete items, and supplementary files trashed on their own, older than TRASH_DAYS."""
+    from routes_library import purge_attachment, purge_item
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=config.TRASH_DAYS)).isoformat(timespec="seconds")
     conn = connect()
@@ -19,6 +20,10 @@ def purge_trash() -> int:
         rows = conn.execute("SELECT * FROM items WHERE deleted_at IS NOT NULL AND deleted_at < ?", (cutoff,)).fetchall()
         for r in rows:
             purge_item(conn, r)
+        atts = conn.execute("SELECT * FROM attachments WHERE role='supplementary' AND deleted_at IS NOT NULL "
+                            "AND deleted_at < ?", (cutoff,)).fetchall()
+        for a in atts:
+            purge_attachment(conn, a)
         conn.commit()
         return len(rows)
     finally:
@@ -50,8 +55,8 @@ def export_json() -> None:
     conn = connect()
     try:
         keep = set()
-        for r in conn.execute("SELECT * FROM items"):
-            item = lib.row_to_item(r)
+        ids = [r[0] for r in conn.execute("SELECT id FROM items")]
+        for item in lib.load_items(conn, ids):
             name = f"{item['citekey']}.json"
             keep.add(name)
             (config.JSON_BACKUP_DIR / name).write_text(json.dumps(item, ensure_ascii=False, indent=1), encoding="utf-8")

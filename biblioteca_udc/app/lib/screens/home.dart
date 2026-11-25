@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
-import '../core/models.dart';
 import '../widgets/item_tile.dart';
 import '../widgets/udc_tree_view.dart';
 import 'admin.dart';
@@ -111,7 +110,7 @@ class SideMenu extends StatelessWidget {
           if (s.user?.isAdmin ?? false)
             ListTile(
               leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('Users and resource types'),
+              title: const Text('Users'),
               enabled: !s.offline,
               onTap: () => go(() => Navigator.push(parentContext, MaterialPageRoute(builder: (_) => const AdminScreen()))),
             ),
@@ -158,14 +157,15 @@ class _LeftPane extends StatelessWidget {
     final fieldItems = <DropdownMenuItem<String>>[
       const DropdownMenuItem(value: 'all', child: Text('All fields')),
       const DropdownMenuItem(value: 'title', child: Text('Title')),
-      const DropdownMenuItem(value: 'creators', child: Text('Authors')),
+      const DropdownMenuItem(value: 'creators', child: Text('Creators')),
       const DropdownMenuItem(value: 'year', child: Text('Year')),
-      const DropdownMenuItem(value: 'type', child: Text('Type')),
-      const DropdownMenuItem(value: 'language', child: Text('Language')),
+      const DropdownMenuItem(value: 'type', child: Text('Item type')),
       const DropdownMenuItem(value: 'udc', child: Text('UDC')),
+      const DropdownMenuItem(value: 'tags', child: Text('Tags')),
       const DropdownMenuItem(value: 'citekey', child: Text('Citation key')),
-      for (final e in s.schema.fields.entries)
-        DropdownMenuItem(value: e.key, child: Text(e.value.label)),
+      // Zotero fields; a base field also searches its variants (Publisher finds University, Institution...)
+      for (final (code, label) in s.schema.searchFields)
+        if (code != 'title') DropdownMenuItem(value: code, child: Text(label)),
     ];
     final fieldValue = fieldItems.any((d) => d.value == s.field) ? s.field : 'all';
 
@@ -422,10 +422,10 @@ Future<void> showFilterDialog(BuildContext context) async {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               DropdownButtonFormField<String?>(
                 value: type,
-                decoration: const InputDecoration(labelText: 'Resource type', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Item type', border: OutlineInputBorder()),
                 items: [
                   const DropdownMenuItem<String?>(value: null, child: Text('Any')),
-                  for (final t in s.schema.types) DropdownMenuItem<String?>(value: t.code, child: Text(t.label)),
+                  for (final t in s.schema.enabledTypes) DropdownMenuItem<String?>(value: t.code, child: Text(t.label)),
                 ],
                 onChanged: (v) => setLocal(() => type = v),
               ),

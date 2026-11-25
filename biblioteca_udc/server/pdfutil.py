@@ -76,7 +76,7 @@ def embedded_metadata(path: Path) -> dict:
     for raw in re.split(r";| and | y |\n", md.get("author") or ""):
         raw = raw.strip()
         if raw:
-            creators.append({"role": "author", **parse_name(raw)})
+            creators.append({"creator_type": "author", "field_mode": 0, **parse_name(raw)})
     return {"title": title, "creators": creators}
 
 

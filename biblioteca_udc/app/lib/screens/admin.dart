@@ -6,7 +6,7 @@ import '../core/api.dart';
 import '../core/app_state.dart';
 import '../core/models.dart';
 
-/// Administrator tools: users and resource types.
+/// Administrator tools: users. (Item types come from Zotero's schema and are not edited in the app.)
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
 
@@ -120,91 +120,12 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  Future<void> _addType() async {
-    final s = context.read<AppState>();
-    final code = TextEditingController();
-    final label = TextEditingController();
-    final newKey = TextEditingController();
-    final newLabel = TextEditingController();
-    final chosen = <String>{'abstract', 'keywords', 'url', 'notes'};
-    final fields = {...s.schema.fields};
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('New resource type'),
-          content: SizedBox(
-            width: 460,
-            child: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                TextField(controller: code, decoration: const InputDecoration(labelText: 'Code', hintText: 'standard')),
-                TextField(controller: label, decoration: const InputDecoration(labelText: 'Name shown in the app', hintText: 'Standard')),
-                const SizedBox(height: 16),
-                const Text('Fields for this type'),
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 4, children: [
-                  for (final f in fields.values)
-                    FilterChip(
-                      label: Text(f.label),
-                      selected: chosen.contains(f.key),
-                      onSelected: (v) => setLocal(() => v ? chosen.add(f.key) : chosen.remove(f.key)),
-                    ),
-                ]),
-                const SizedBox(height: 16),
-                const Text('Need a field that does not exist yet?'),
-                Row(children: [
-                  Expanded(child: TextField(controller: newKey, decoration: const InputDecoration(labelText: 'Key', hintText: 'edition_year'))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: newLabel, decoration: const InputDecoration(labelText: 'Label'))),
-                  IconButton(
-                    tooltip: 'Create field',
-                    icon: const Icon(Icons.add),
-                    onPressed: () async {
-                      try {
-                        await s.api.addField(newKey.text.trim(), newLabel.text.trim(), 'text');
-                        await s.refreshSchema();
-                        setLocal(() {
-                          fields
-                            ..clear()
-                            ..addAll(s.schema.fields);
-                          chosen.add(newKey.text.trim());
-                          newKey.clear();
-                          newLabel.clear();
-                        });
-                      } on ApiException catch (e) {
-                        if (ctx.mounted) toast(ctx, e.message, error: true);
-                      }
-                    },
-                  ),
-                ]),
-              ]),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create type')),
-          ],
-        ),
-      ),
-    );
-    if (ok == true && mounted) {
-      await _run(() async {
-        await s.api.addType(code.text.trim(), label.text.trim(), chosen.toList());
-        await s.refreshSchema();
-      }, done: 'Resource type created.');
-    }
-    for (final c in [code, label, newKey, newLabel]) {
-      c.dispose();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Users and resource types')),
+      appBar: AppBar(title: const Text('Users')),
       body: _error != null
           ? Center(child: Text(_error!))
           : _users == null
@@ -246,30 +167,6 @@ class _AdminScreenState extends State<AdminScreen> {
                           PopupMenuItem(value: 'delete', child: Text('Delete user', style: TextStyle(color: cs.error))),
                         ],
                       ),
-                    ),
-                  const Divider(height: 32),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-                    child: Row(children: [
-                      Expanded(child: Text('Resource types', style: Theme.of(context).textTheme.titleMedium)),
-                      OutlinedButton.icon(onPressed: _addType, icon: const Icon(Icons.add, size: 18), label: const Text('New type')),
-                      const SizedBox(width: 8),
-                    ]),
-                  ),
-                  for (final t in s.schema.types)
-                    ListTile(
-                      title: Text(t.label),
-                      subtitle: Text('${t.code}  |  ${t.fields.length} fields'),
-                      trailing: t.code == 'other'
-                          ? null
-                          : IconButton(
-                              tooltip: 'Delete type',
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _run(() async {
-                                await s.api.deleteType(t.code);
-                                await s.refreshSchema();
-                              }, done: 'Type deleted.'),
-                            ),
                     ),
                   const SizedBox(height: 32),
                 ]),

@@ -4,6 +4,7 @@ import argparse
 import base64
 import csv
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -42,7 +43,8 @@ def cmd_index(a):
     pf = Classifier(tree, idx, emb).places
     print(f"\nIndice: {len(idx.uris)} nodos, dim {idx.emb.shape[1]}, {time.time() - t0:.0f}s")
     if pf.unresolved:
-        print("Alias de lugar sin resolver (revisa PLACE_ALIASES_ES en config.py):", "; ".join(pf.unresolved[:15]))
+        print(f"Países CLDR sin nodo de lugar ({len(pf.unresolved)}; añade TERRITORY_UDC en config.py si importan):",
+              "; ".join(pf.unresolved[:20]))
 
 
 def cmd_tree(a):
@@ -69,11 +71,61 @@ def cmd_validate(a):
         print(f"  [{lv}] {msg}")
 
 
+def _apply_enrichment(rec: dict) -> dict | None:
+    """Consulta por ISBN/DOI/arXiv y rellena campos del tipo detectado: un valor externo gana a uno extraído
+    con menos confianza. Devuelve el resultado (temas, LC/Dewey, UDC de catálogo) o None."""
+    from .enrich import enrich
+    from .metadata import name_to_creator
+    e = enrich(rec.get("identifiers") or {})
+    if not e or not e["sources"]:
+        if e:
+            rec["enrichment"] = {"sources": [], "errors": e["errors"]}
+        return None
+    src = "+".join(e["sources"])
+    allowed = set(config.ZOTERO_ITEM_TYPES.get(rec["item_type"]["value"], []))
+    f, filled = rec["fields"], []
+    from .metadata import similar
+    for k, v in e["fields"].items():
+        if k not in allowed or (k in f and f[k]["confidence"] >= config.ENRICH_CONFIDENCE):
+            continue
+        old = f.get(k, {}).get("value")
+        if k == "title" and isinstance(old, str) and similar(old[:len(v)], v) >= 0.8 and len(old) >= len(v):
+            # el catálogo confirma el título del PDF, que suele estar más completo (acentos, subtítulo):
+            # se conserva y sube la confianza (Open Library recorta algunos títulos)
+            f[k] = {"value": old, "source": f[k]["source"] + "+" + src, "confidence": config.ENRICH_CONFIDENCE}
+            filled.append(k + " (confirmado)")
+            continue
+        f[k] = {"value": v, "source": src, "confidence": config.ENRICH_CONFIDENCE}
+        filled.append(k)
+    if e["creators"] and ("creators" not in f or f["creators"]["confidence"] < config.ENRICH_CONFIDENCE):
+        role = config.PRIMARY_CREATOR.get(rec["item_type"]["value"], "author")
+        f["creators"] = {"value": [name_to_creator(n, role) for n in e["creators"]], "source": src,
+                         "confidence": config.ENRICH_CONFIDENCE}
+        filled.append("creators")
+    if e["subjects"] and "tags" in allowed | {"tags"}:
+        from .enrich import is_code
+        tags = [s for s in e["subjects"] if not is_code(s)][:10]
+        if tags and ("tags" not in f or f["tags"]["confidence"] < config.ENRICH_CONFIDENCE):
+            f["tags"] = {"value": tags, "source": src, "confidence": config.ENRICH_CONFIDENCE}
+            filled.append("tags")
+    rec["enrichment"] = {"sources": e["sources"], "filled": filled, "subjects": e["subjects"][:12],
+                         "ddc": e["ddc"], "lcc": e["lcc"], "udc": e["udc"], "errors": e["errors"]}
+    return e
+
+
 def process(path, clf, args):
     from .pdfio import read_pdf
     pdf = read_pdf(path, ocr=args.ocr)
     rec = build_record(pdf, use_ner=args.ner)
+    enr = None
+    if config.ENRICH_ONLINE and not getattr(args, "offline", False):
+        enr = _apply_enrichment(rec)                     # identificador primero; heurísticas e IA después
     views = build_views(pdf, rec)
+    if enr:
+        from .enrich import subjects_view
+        sv = subjects_view(enr)
+        if sv:
+            views["subjects"] = sv
     f = rec["fields"]
     if getattr(args, "llm", False) or config.LLM_ENABLED:
         try:
@@ -86,13 +138,21 @@ def process(path, clf, args):
            "title": f.get("title", {}).get("value", ""), "abstract": f.get("abstractNote", {}).get("value", ""),
            "tags": ", ".join(f.get("tags", {}).get("value", [])),
            "filename": Path(path).stem.replace("_", " ")}
+    if enr and enr.get("udc"):
+        ctx["external_udc"] = {"codes": enr["udc"], "source": "+".join(s for s in enr["sources"])}
+    if rec.get("score"):
+        # partitura: la clase sale de reglas dentro de 78 (género, plantilla por pentagramas, instrumento, forma)
+        ctx["score"] = {**rec["score"], "per_system": pdf.staff.per_system if pdf.staff else 0,
+                        "text": " ".join([ctx["filename"], pdf.meta.get("title", ""), ctx["title"],
+                                          "\n".join(pdf.head_text[:3])])[:4000]}
     if pdf.scanned and not pdf.ocr_used:
         # sin texto real, el resto de vistas es ruido: clasificar solo por el título (si lo hay)
         views = {"front": ctx["title"]} if ctx["title"] else {}
         ctx["title_only"] = True
     cls = clf.suggest(views, ctx, sha=pdf.sha1)
     out = {"file": str(path), "sha1": pdf.sha1, "pages": pdf.n_pages, "scanned": pdf.scanned, "ocr": pdf.ocr_used,
-           **rec, "classification": cls, "warnings": pdf.warnings}
+           "ocr_langs": pdf.ocr_langs, "pages_used": [i + 1 for i in pdf.pages_used],
+           "blank_skipped": pdf.blank_skipped, **rec, "classification": cls, "warnings": pdf.warnings}
     if getattr(args, "verify", False):
         from .verify import verify_record
         out["verification"] = verify_record(rec)
@@ -162,24 +222,53 @@ def cmd_review(a):
     gold_p = Path(a.gold)
     gold_exists = gold_p.exists()
     seen = {r["file"] for r in csv.DictReader(open(gold_p, encoding="utf-8-sig"))} if gold_exists else set()
+    # Respuestas preparadas (columnas file, udc): en modo ciego se usan sin preguntar.
+    answers = {}
+    ans_p = Path(a.answers) if a.answers else None
+    if a.blind and ans_p and ans_p.exists():
+        with open(ans_p, encoding="utf-8-sig") as fh:
+            answers = {Path(x["file"]).name: x["udc"].strip() for x in csv.DictReader(fh) if x.get("udc", "").strip()}
+        print(f"Respuestas de {ans_p}: {len(answers)}")
     from .notation import components
+    auto = 0
     for r in results:
         if r["file"] in seen:
             continue
         mine = None
         if a.blind:
             print("\n" + "=" * 78 + f"\n{Path(r['file']).name}  — {r['fields'].get('title', {}).get('value', '')}")
-            mine = input("Tu UDC SIN ver sugerencias (enter = omitir): ").strip()
+            mine = answers.get(Path(r["file"]).name)
+            if mine:
+                print(f"Tu UDC (de {ans_p.name}): {mine}")
+            else:
+                mine = input("Tu UDC SIN ver sugerencias (enter = omitir): ").strip()
             if not mine:
                 continue
-        _show(r)
+        if mine:
+            bad = [m for lv, m in validate(mine, tree) if lv == "error"]
+            if bad:
+                print("  Tu UDC no es válida:", "; ".join(bad), "→ se omite este documento")
+                continue
         sug = r["classification"]["suggestions"]
-        ans = input("\n1/2/3 = aceptar · e = escribir otra · s = saltar · q = salir > ").strip().lower()
+        if mine and Path(r["file"]).name in answers:
+            ans = ""                                     # respuesta preparada: se guarda sin preguntar
+            top = sug[0]["udc"] if sug else "—"
+            print(f"  sistema: {top}")
+            auto += 1
+        else:
+            _show(r)
+            prompt = ("\nEnter = guardar TU UDC · 1/2/3 = aceptar sugerencia · e = escribir otra · s = saltar · "
+                      "q = salir > " if mine else "\n1/2/3 = aceptar · e = escribir otra · s = saltar · q = salir > ")
+            ans = input(prompt).strip().lower()
         if ans == "q":
             break
-        if ans == "s" or not ans:
+        if ans == "" and mine:
+            # lo aprendido es TU notación (no una sugerencia que quizá estaba mal)
+            same = [i for i, s in enumerate(sug, 1) if re.sub(r"\s", "", s["udc"]) == re.sub(r"\s", "", mine)]
+            final, rank = mine, (same[0] if same else 0)
+        elif ans == "s" or not ans:
             continue
-        if ans in ("1", "2", "3") and int(ans) <= len(sug):
+        elif ans in ("1", "2", "3") and int(ans) <= len(sug):
             final, rank = sug[int(ans) - 1]["udc"], int(ans)
         elif ans == "e":
             final, rank = input("UDC: ").strip(), 0
@@ -209,6 +298,8 @@ def cmd_review(a):
                         f.get("title", {}).get("value", ""), f.get("date", {}).get("value", ""),
                         r["doc_language"], r["item_type"]["value"]])
         print(f"  ✔ guardado ({fb.count()} confirmaciones)")
+    if auto:
+        print(f"\n{auto} documentos guardados desde {ans_p.name}")
     info = fb.train_reranker()
     print("Reranker:", json.dumps(info, ensure_ascii=False))
 
@@ -290,11 +381,16 @@ def main():
     s.add_argument("--limit", type=int); s.add_argument("--resume", action="store_true")
     s.add_argument("--ocr", action="store_true"); s.add_argument("--ner", action="store_true")
     s.add_argument("--verify", action="store_true"); s.add_argument("--llm", action="store_true")
+    s.add_argument("--offline", action="store_true",
+                   help="no consultar catálogos por ISBN/DOI/arXiv (por defecto sí; ver config.ENRICH_ONLINE)")
     s.add_argument("--model"); s.set_defaults(f=cmd_run)
     s = sp.add_parser("review", help="revisión interactiva: confirma/corrige y alimenta el aprendizaje")
     s.add_argument("results", nargs="?", default=str(config.OUTPUT_DIR / "results.json"))
     s.add_argument("--gold", default=str(config.OUTPUT_DIR / "gold.csv"))
     s.add_argument("--blind", action="store_true", help="primero tu UDC a ciegas (para un gold sin sesgo)")
+    s.add_argument("--answers", default=str(config.GOLD_ANSWERS),
+                   help="CSV (file, udc) con tus UDC ya decididas: con --blind se usan sin preguntar; "
+                        "'' para desactivar")
     s.set_defaults(f=cmd_review)
     s = sp.add_parser("train", help="reentrena el reranker con las confirmaciones"); s.set_defaults(f=cmd_train)
     s = sp.add_parser("evaluate", help="métricas contra gold.csv")

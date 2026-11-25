@@ -55,6 +55,11 @@ def normalize(v: np.ndarray) -> np.ndarray:
     return v / n if n else v
 
 
+def text_hash(text: str) -> str:
+    """Huella corta del texto embebido de un nodo (permite reutilizar su vector si no cambió)."""
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+
+
 class UDCIndex:
     """Embeddings de todos los nodos no-rango del árbol (texto = ruta jerárquica + sinónimos + nota)."""
 
@@ -69,13 +74,32 @@ class UDCIndex:
         d.mkdir(parents=True, exist_ok=True)
         meta_p, emb_p = d / "meta.json", d / "emb.npy"
         fp = tree.fingerprint()
+        nodes = tree.indexable()
+        texts = [tree.node_text(n) for n in nodes]
+        hashes = [text_hash(t) for t in texts]
+        old_rows: dict[str, np.ndarray] = {}
         if not force and meta_p.exists() and emb_p.exists():
             meta = json.loads(meta_p.read_text(encoding="utf-8"))
             if meta.get("fingerprint") == fp:
                 return cls(tree, meta["uris"], np.load(emb_p))
-        nodes = tree.indexable()
-        emb = embedder.encode([tree.node_text(n) for n in nodes], role="passage", progress=progress)
+            # Incremental: los nodos cuyo texto no cambió conservan su vector (mismo modelo).
+            if meta.get("model") == embedder.name and meta.get("texts"):
+                old = np.load(emb_p)          # en memoria (no mmap): en Windows no se puede reescribir
+                pos = {u: i for i, u in enumerate(meta["uris"])}   # un archivo mapeado
+                old_rows = {n.uri: old[pos[n.uri]] for n, h in zip(nodes, hashes)
+                            if n.uri in pos and meta["texts"].get(n.uri) == h}
+        todo = [i for i, n in enumerate(nodes) if n.uri not in old_rows]
+        if progress and old_rows:
+            print(f"Índice incremental: {len(old_rows)} vectores reutilizados, {len(todo)} por calcular")
+        new = embedder.encode([texts[i] for i in todo], role="passage", progress=progress) if todo else None
+        emb = np.zeros((len(nodes), embedder.dim if new is None else new.shape[1]), dtype=np.float32)
+        for j, i in enumerate(todo):
+            emb[i] = new[j]
+        for i, n in enumerate(nodes):
+            if n.uri in old_rows:
+                emb[i] = old_rows[n.uri]
         uris = [n.uri for n in nodes]
         np.save(emb_p, emb)
-        meta_p.write_text(json.dumps({"fingerprint": fp, "uris": uris, "model": embedder.name}), encoding="utf-8")
+        meta_p.write_text(json.dumps({"fingerprint": fp, "uris": uris, "model": embedder.name,
+                                      "texts": dict(zip(uris, hashes))}), encoding="utf-8")
         return cls(tree, uris, emb)

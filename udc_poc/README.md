@@ -12,7 +12,7 @@ python -m venv .venv
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 ```
-1. Copia tu `udcs-skos.rdf` a `data\udcs-skos.rdf`.
+1. El árbol UDC se lee de `biblioteca_udc/server/udc_data/udcs-skos.rdf` (lo escribe la fusión del árbol; `UDC_RDF` en `config.py`). No hay que copiarlo.
 2. La primera vez, `bge-m3` se descarga (~2.3 GB) desde Hugging Face (gratis). Respaldo ligero: en `config.py`
    cambia `EMBEDDING_MODEL` a `intfloat/multilingual-e5-small`.
 3. Opcionales: `py3langid` y `langdetect` (idioma), `gliner` (autores, flag `--ner`). Todos instalan en
@@ -21,9 +21,24 @@ pip install -r requirements.txt
    ```powershell
    winget install UB-Mannheim.TesseractOCR    # en el instalador, marca el idioma "Spanish"
    ```
-   Si no marcaste el español, copia `spa.traineddata` (github.com/tesseract-ocr/tessdata_best) a
-   `C:\Program Files\Tesseract-OCR\tessdata`. Si PyMuPDF no lo encuentra, define `TESSDATA_DIR` en `config.py`
-   (o la variable de entorno `TESSDATA_PREFIX`) con esa carpeta. Idiomas y DPI: `OCR_LANGS`, `OCR_DPI`.
+   Modelos de todos los idiomas (126) y scripts (37), ~670 MB, en la carpeta del programa (PowerShell **como
+   administrador**; `robocopy` no sobrescribe los que ya instaló el instalador):
+   ```powershell
+   git clone --depth 1 https://github.com/tesseract-ocr/tessdata_fast $env:TEMP\tessdata_fast
+   robocopy $env:TEMP\tessdata_fast "C:\Program Files\Tesseract-OCR\tessdata" /E /XC /XN /XO /XD .git
+   Remove-Item -Recurse -Force $env:TEMP\tessdata_fast
+   ```
+   `config.TESSDATA_DIR` usa esa carpeta si tiene `script\Latin.traineddata` (si no, `data\tessdata`). Con `OCR_LANGS = "auto"` no se usan todos a la vez (sería lento
+   e impreciso): se hace OCR de prueba con el modelo de script latino, se detecta el idioma y se usa
+   `<idioma>+eng`; si el texto no es latino, OSD (`TESSERACT_EXE`) detecta el script (hebreo, cirílico, árabe…).
+   El motivo queda en `ocr_langs` de `results.json`. Para fijar idiomas: `OCR_LANGS = "fra+eng"` (por ejemplo).
+
+   **Páginas leídas:** las primeras `HEAD_PAGES` y últimas `TAIL_PAGES` páginas *con contenido*, buscando hasta
+   `SCAN_LIMIT` por extremo. Se saltan páginas vacías (sin texto y sin tinta: guardas, portadas lisas,
+   "intentionally left blank"), capas de texto basura (OCR viejo sobre tapas decoradas) y páginas que tras el
+   OCR no dan texto legible (música, grabados, manuscritos); tras `OCR_GIVE_UP` seguidas se deja de buscar en
+   ese extremo. `results.json` registra `pages_used` y `blank_skipped`. Umbrales: `BLANK_INK`,
+   `MIN_LANG_CONF`, `MIN_TEXT_QUALITY`, `OCR_MAX_ATTEMPTS`.
 
 ## 2. Flujo de trabajo
 
@@ -44,27 +59,74 @@ Flags útiles de `run`: `--limit 5`, `--resume`, `--ocr`, `--ner`, `--verify` (C
 `--llm` (opcional, ver §6). **Empieza por `index` y mándame su salida**: no he visto tu RDF real y ahí se calibra
 la detección de tablas auxiliares.
 
+### 2.1 Documentos en cualquier idioma
+El PoC no asume el idioma de los documentos (el de la interfaz es otra cosa: los mensajes están en español).
+- **Idioma**: `py3langid` con todos sus ~140 idiomas. La tabla de lengua `=` se resuelve con el nombre inglés del
+  idioma (CLDR, paquete `babel`) contra el árbol: 126 de los 140 tienen nodo UDC.
+- **Lugar**: siempre se buscan las etiquetas inglesas del árbol y, además, los nombres de países y regiones de
+  CLDR **en el idioma del documento** (Mexiko, Мексика, メキシコ, المكسيك…), con declinación en idiomas con casos
+  (Испании, Polski, Mexikos). Los nombres de país mandan sobre homónimos del árbol (India ≠ Indian Ocean). Al
+  correr `index` se listan los países sin nodo; se arreglan en `TERRITORY_UDC` (código CLDR -> notación).
+- **Fechas**: meses del idioma del documento + inglés + los nombres no ambiguos de cualquier idioma CLDR.
+- **Tipo, forma, resumen, palabras clave, edición, editorial, siglos, nombres de persona**: vocabulario de los
+  idiomas principales (en, es, fr, de, it, pt, nl, pl, ru y otros); los nombres admiten alfabetos latino, griego
+  y cirílico. Para otros idiomas la clasificación temática no depende de esto: bge-m3 es multilingüe.
+- **OCR**: idioma detectado por documento (ver §1.4); sin detección fiable, modelo de alfabeto latino.
+
 ### Cómo armar el gold sin sesgo
 Con 25-30 PDF de `sample_plan.csv`, usa `review --blind`: escribes **tu** UDC antes de ver la sugerencia. Si solo
 aceptas la sugerencia, las métricas medirán tu tendencia a aceptar, no la calidad. Como estás aprendiendo UDC,
 espera ruido en tus etiquetas; el sistema lo aprenderá también.
 
+Tras escribir tu UDC, **Enter** la guarda tanto en el gold como en el aprendizaje. Si ya tienes tus notaciones
+decididas, ponlas en `books\gold\udc_gold.csv` (columnas `file,udc,nota`; `file` = nombre del PDF):
+`review --blind` las toma de ahí sin preguntar (y pregunta solo las que falten). Otro archivo: `--answers ruta.csv`;
+desactivarlo: `--answers ""`. Revisar de nuevo un documento reemplaza su ejemplo de aprendizaje (no lo duplica).
+
+### 2.2 Partituras
+Se detectan por **pentagramas** (`udcpoc/music.py`): cinco líneas equidistantes repetidas, buscadas en unas pocas
+páginas a baja resolución. No dependen del idioma ni del texto (en «Sobre las olas» el texto «Rosas» llevaba a la
+botánica). Es partitura si la mayoría de las páginas miradas tienen pentagramas con poco texto, o basta una si el
+archivo viene de IMSLP/MuseScore/LilyPond… Un libro **sobre** música (armonía, orquestación, contrapunto,
+ejercicios…) no lo es aunque traiga ejemplos. Para una partitura la 1.ª sugerencia sale de reglas dentro de 78:
+- **género o agrupación** por palabras clave multilingües: ópera `782`, religiosa `783`, canción `784.3`, coro
+  `784.1`, orquesta `785.11`, concierto `785.6`, cámara `785.72-.79`;
+- si no hay palabras: **pentagramas por sistema** (2 teclado, 3 voz y piano, 4 cuarteto, 8+ orquesta);
+- instrumento solista → `780.8:instrumento` (`780.616.433` piano, `780.616.31` clave, `780.614.332` violín…);
+- **forma** con `:` (`78.083.2` variaciones, `78.083.3` tocata, `78.085.2` vals…). Ejemplo:
+  `780.8:780.616.433:78.083.3`. El idioma solo se añade si la obra es vocal.
+Umbrales: `SCORE_*` en `config.py`. Las sugerencias 2 y 3 se limitan a la rama 78.
+
+### 2.3 Identificador primero (ISBN, DOI, arXiv)
+`run` consulta por identificador **antes** de heurísticas o IA (`udcpoc/enrich.py`; `--offline` lo desactiva):
+- **Open Library** (ISBN): título, editorial, lugar, fecha, páginas, **temas** y clasificación **LC/Dewey**;
+- **Crossref** (DOI): título, autores, revista, editorial, fecha, volumen, número, páginas, ISSN;
+- **arXiv**: título, autores, fecha, resumen y categorías (cs.CL…), traducidas a texto;
+- **UDC de catálogo**: la Biblioteca Nacional de Polonia (MARC 080) cuando el libro está en su catálogo. Open
+  Library, Crossref y arXiv **no** traen UDC; la UDC está en catálogos nacionales (Polonia, España, Chequia,
+  Eslovenia, Croacia…). Si llega una UDC válida, es la 1.ª sugerencia.
+
+Los campos externos entran con confianza 0.9 (ganan a lo extraído del PDF); si el título del catálogo coincide
+con el del PDF se conserva el más completo. Los temas y las clases LC/Dewey (en texto) forman la vista
+`subjects` del clasificador, con peso 0.3 (calibrado con el gold: más peso arrastra a clases vecinas).
+Solo se envía el identificador; las respuestas quedan en `data/lookup_cache.json`.
+
 ## 3. Dónde editar (todo en `config.py`)
 
 | Qué | Variable |
 |---|---|
-| Ítems de Zotero y sus campos | `ZOTERO_ITEM_TYPES` (una lista de campos por tipo; añade/quita nombres) |
+| Ítems de Zotero y sus campos | No se editan aquí: `ZOTERO_ITEM_TYPES` se lee de `biblioteca_udc/server/zotero/` (el `schema.json` oficial de Zotero + `zotero_overlay.json`, los mismos que usa el servidor). Tipos activos: `enabled_types` del overlay |
 | Campos críticos (marcan "incompleto") | `CRITICAL_FIELDS` |
 | Cómo se detecta el tipo de documento | `DOCTYPE_RULES` (regex y pesos) |
 | Tabla de forma `(0...)` | `FORM_BY_DOCTYPE`, `FORM_BY_TEXT` (palabras clave que se buscan en las **etiquetas inglesas** del árbol) |
-| Idiomas y lugares | `LANG_NAMES`, `PLACE_ALIASES_ES` |
-| Partituras | `SCORE_ITEM_TYPE` (por defecto `document` + nota `Tipo: partitura` en `extra`) |
+| Idiomas y lugares | Automático para cualquier idioma (ver §2.1). Excepciones: `LANG_UDC`, `TERRITORY_UDC`, `PLACE_ALIASES`; restringir el detector: `LANGID_LANGS` |
+| Partituras | `SCORE_ITEM_TYPE` + `SCORE_EXTRA` (como indica Zotero: `book` con `Type: musical_score` en `extra`) |
 | Umbrales y pesos | `LOW_CONFIDENCE`, `MIN_SIM`, `AUX_MIN_SIM`, `DEFAULT_WEIGHTS`, `VIEW_WEIGHTS`, … |
 | Cuándo un ejemplo de combinación gana a su clase | `EXAMPLE_MARGIN` (ver §4.1) |
 | Clases alternativas por "See also" | `SEE_ALSO_FROM`, `SEE_ALSO_MAX` (ver §4.2) |
 | Orden de auxiliares en la notación | `AUX_ORDER` |
 
-Para añadir un tipo nuevo (p. ej. `computerProgram`): agrégalo a `ZOTERO_ITEM_TYPES` y, si quieres detectarlo, a `DOCTYPE_RULES`.
+Para añadir un tipo nuevo (p. ej. `computerProgram`): actívalo en `enabled_types` de `zotero_overlay.json` (servidor y PoC lo toman de ahí) y, si quieres detectarlo, agrégalo a `DOCTYPE_RULES`. Sin señales claras el tipo propuesto es `book` (Zotero desaconseja `document`).
 
 ## 4. Cómo interpretar `results.json`
 

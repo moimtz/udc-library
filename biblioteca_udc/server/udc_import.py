@@ -127,7 +127,8 @@ def code_of(uri: str, c: dict) -> str | None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("file", type=Path)
+    ap.add_argument("file", type=Path, nargs="?", default=Path(__file__).resolve().parent / "udc_data" / "udcs-skos.rdf",
+                    help="RDF de la UDC (por defecto udc_data/udcs-skos.rdf, el que escribe udc_main_tree_fusion.py)")
     ap.add_argument("--langs", default="en,es", help="comma-separated language codes to keep")
     args = ap.parse_args()
     langs = [x.strip() for x in args.langs.split(",") if x.strip()]
@@ -173,12 +174,20 @@ def main() -> None:
 
     init_db()
     conn = connect()
-    conn.execute("DELETE FROM udc_nodes")
+    # Update in place: item_udc_nodes points at udc_nodes, so nodes are upserted, the links rebuilt,
+    # and only then are the classes that left the tree deleted.
     for i, code in enumerate(ordered):
         n = nodes[code]
-        conn.execute("INSERT INTO udc_nodes(code,parent,labels,ord,node_type,notes) VALUES (?,?,?,?,?,?)",
+        conn.execute("INSERT INTO udc_nodes(code,parent,labels,ord,node_type,notes) VALUES (?,?,?,?,?,?) "
+                     "ON CONFLICT(code) DO UPDATE SET parent=excluded.parent, labels=excluded.labels, "
+                     "ord=excluded.ord, node_type=excluded.node_type, notes=excluded.notes",
                      (code, n["parent"], json.dumps(n["labels"], ensure_ascii=False), i, n["type"],
                       json.dumps(n["notes"], ensure_ascii=False) if n["notes"] else None))
+    conn.execute("CREATE TEMP TABLE new_codes(code TEXT PRIMARY KEY)")
+    conn.executemany("INSERT INTO new_codes(code) VALUES (?)", [(c,) for c in ordered])
+    conn.execute("DELETE FROM item_udc_nodes WHERE node_code NOT IN (SELECT code FROM new_codes)")
+    removed = conn.execute("DELETE FROM udc_nodes WHERE code NOT IN (SELECT code FROM new_codes)").rowcount
+    conn.execute("DROP TABLE new_codes")
     cancelled = read_cancelled(args.file)
     conn.execute("DELETE FROM udc_cancelled")
     conn.executemany("INSERT INTO udc_cancelled(code,year,ec,label,including,replaced_by,note) VALUES (?,?,?,?,?,?,?)",
@@ -191,7 +200,8 @@ def main() -> None:
     with_notes = sum(1 for n in nodes.values() if n["notes"])
     info = sum(1 for n in nodes.values() if n["type"] == "info")
     print(f"Imported {len(ordered)} UDC classes ({', '.join(langs)}); {with_notes} with notes, {info} informative; "
-          f"{len(cancelled)} cancelled classes. Existing items were re-linked to the tree.")
+          f"{len(cancelled)} cancelled classes; {removed} classes no longer in the tree were removed. "
+          "Existing items were re-linked to the tree.")
     if len(ordered) < len(nodes):
         print(f"Warning: {len(nodes) - len(ordered)} classes were not reachable from a root and were skipped.")
 

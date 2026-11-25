@@ -221,11 +221,11 @@ class AppState extends ChangeNotifier {
   }
 
   void _showCached() {
-    var list = cache.entries.values.map((e) => e.item).toList();
+    var list = cache.items;
     final q = foldText(searchController.text.trim());
     if (q.isNotEmpty) {
       list = list
-          .where((i) => foldText('${i.title} ${i.creatorsText} ${i.udc}').contains(q))
+          .where((i) => foldText('${i.title} ${i.creatorsText} ${i.udcText}').contains(q))
           .toList();
     }
     list.sort((a, b) => foldText(a.title).compareTo(foldText(b.title)));
@@ -348,7 +348,7 @@ class AppState extends ChangeNotifier {
   Future<void> itemTrashed(int id) async {
     results.removeWhere((r) => r.id == id);
     total = results.length;
-    await cache.remove(id);
+    await cache.removeItem(id);
     await refreshAfterChange();
   }
 

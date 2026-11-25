@@ -123,8 +123,9 @@ class ApiClient {
   }
 
   // ---- library
-  Future<SchemaInfo> schema() async =>
-      SchemaInfo.fromJson(Map<String, dynamic>.from(await _json('GET', '/api/schema')));
+  /// Zotero item types with their fields and creator roles. The interface is in English (en-US).
+  Future<SchemaInfo> schema({String lang = 'en-US'}) async => SchemaInfo.fromJson(
+      Map<String, dynamic>.from(await _json('GET', '/api/schema', query: {'lang': lang})));
 
   Future<UdcIndex> udcTree() async {
     final j = Map<String, dynamic>.from(await _json('GET', '/api/udc/tree'));
@@ -197,8 +198,10 @@ class ApiClient {
     }
   }
 
+  /// Looks up a DOI / ISBN / arXiv ID. Values come back fitted to [itemType] (or to the type the lookup
+  /// suggests, when it is enabled), each with its source.
   Future<Map<String, dynamic>> autofill(
-          {String? tempId, String? doi, String? isbn, String? arxiv}) async =>
+          {String? tempId, String? doi, String? isbn, String? arxiv, String? itemType}) async =>
       Map<String, dynamic>.from(await _json('POST', '/api/autofill',
           timeout: const Duration(seconds: 45),
           body: {
@@ -206,7 +209,38 @@ class ApiClient {
             if (doi != null && doi.isNotEmpty) 'doi': doi,
             if (isbn != null && isbn.isNotEmpty) 'isbn': isbn,
             if (arxiv != null && arxiv.isNotEmpty) 'arxiv': arxiv,
+            if (itemType != null) 'item_type': itemType,
           }));
+
+  /// Moves a form's values to another item type (nothing is saved). Returns {fields, creators, report}.
+  Future<Map<String, dynamic>> convertType(String from, String to, Map<String, dynamic> fields,
+          List<Map<String, dynamic>> creators) async =>
+      Map<String, dynamic>.from(await _json('POST', '/api/convert-type',
+          body: {'from_type': from, 'to_type': to, 'fields': fields, 'creators': creators}));
+
+  // ---- supplementary material and notes (each call returns the updated item)
+  Future<Item> addAttachment(int itemId, String tempId, String label) async => Item.fromJson(Map<String, dynamic>.from(
+      await _json('POST', '/api/items/$itemId/attachments', body: {'temp_id': tempId, 'label': label})));
+
+  Future<Item> renameAttachment(int attId, String label) async => Item.fromJson(
+      Map<String, dynamic>.from(await _json('PATCH', '/api/attachments/$attId', body: {'label': label})));
+
+  Future<Item> orderAttachments(int itemId, List<int> ids) async => Item.fromJson(Map<String, dynamic>.from(
+      await _json('PUT', '/api/items/$itemId/attachments/order', body: {'ids': ids})));
+
+  Future<void> trashAttachment(int attId) => _json('DELETE', '/api/attachments/$attId');
+
+  Future<Item> getItem(int id) async =>
+      Item.fromJson(Map<String, dynamic>.from(await _json('GET', '/api/items/$id')));
+
+  Future<Item> addNote(int itemId, String body) async => Item.fromJson(
+      Map<String, dynamic>.from(await _json('POST', '/api/items/$itemId/notes', body: {'body': body})));
+
+  Future<Item> editNote(int noteId, String body) async =>
+      Item.fromJson(Map<String, dynamic>.from(await _json('PUT', '/api/notes/$noteId', body: {'body': body})));
+
+  Future<Item> deleteNote(int noteId) async =>
+      Item.fromJson(Map<String, dynamic>.from(await _json('DELETE', '/api/notes/$noteId')));
 
   Future<Item> createItem(Map<String, dynamic> body) async => Item.fromJson(
       Map<String, dynamic>.from(await _json('POST', '/api/items', body: body)));
@@ -238,18 +272,12 @@ class ApiClient {
       _json('PATCH', '/api/users/$id', body: body);
   Future<void> deleteUser(int id) => _json('DELETE', '/api/users/$id');
 
-  Future<void> addType(String code, String label, List<String> fields) =>
-      _json('POST', '/api/types', body: {'code': code, 'label': label, 'fields': fields});
-
-  Future<void> deleteType(String code) => _json('DELETE', '/api/types/$code');
-
-  Future<void> addField(String key, String label, String kind) => _json('POST', '/api/fields',
-      body: {'key': key, 'label': label, 'kind': kind});
-
   // ---- file download (streamed to disk)
+  /// The item's main file, or one supplementary file when [attachmentId] is given.
   Future<void> download(int id, File dest,
-      {void Function(int received, int total)? onProgress}) async {
-    final req = http.Request('GET', _u('/api/items/$id/file'))..headers.addAll(headers);
+      {int? attachmentId, void Function(int received, int total)? onProgress}) async {
+    final path = attachmentId == null ? '/api/items/$id/file' : '/api/attachments/$attachmentId/file';
+    final req = http.Request('GET', _u(path))..headers.addAll(headers);
     final part = File('${dest.path}.part');
     IOSink? sink;
     try {
