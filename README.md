@@ -197,19 +197,28 @@ The detailed, step-by-step guides (in Spanish) are in [biblioteca_udc/README.md]
 
 ### 1. Server
 
-Requirements: Windows and Python 3.11+.
+Requirements: Windows, Python 3.11+, Git for Windows, and Tailscale signed in with "Run unattended" and MagicDNS enabled.
+
+Get the code (Git Bash):
+
+```bash
+git clone https://github.com/moimtz/udc-library.git /c/udc-library
+```
+
+Then, in `C:\udc-library\biblioteca_udc\server`, double-click the scripts or run them from CMD (not Git Bash, which cannot hide the password prompt):
 
 ```bat
-cd biblioteca_udc\server
-install_server.bat        :: creates .venv, installs requirements, asks for the admin password
-run_server.bat            :: starts Uvicorn; retries every 10 s if Tailscale is not up yet
+install_server.bat        :: creates .venv, installs requirements, creates the admin, imports the UDC tree
+run_server.bat            :: starts Uvicorn on the Tailscale IP; retries every 10 s if Tailscale is not up yet
 ```
+
+The app connects to `http://PC-NAME:8765` (the MagicDNS name). To update later: stop the server, run `git pull`, then reinstall the requirements (`.venv/Scripts/python.exe -m pip install -r requirements.txt`).
 
 Settings live in `run_server.bat`:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BUDC_HOST` | `127.0.0.1` | bind address; use the PC's Tailscale IP (`tailscale ip -4`) |
+| `BUDC_HOST` | `tailscale` in `run_server.bat` (`127.0.0.1` if unset) | bind address; `tailscale` = this PC's Tailscale IP, detected at start-up |
 | `BUDC_PORT` | `8765` | port |
 | `BUDC_DATA_DIR` | `server\data` | database, PDFs, covers, backups |
 | `BUDC_MAX_STORAGE_GB` | `20` | storage limit (PDFs + trash) |
@@ -219,7 +228,7 @@ Health check: `http://127.0.0.1:8765/api/health`.
 
 ### 2. UDC tree
 
-Without this step the app only shows the ten main classes (0–9).
+`install_server.bat` already does this once. Without it the app only shows the ten main classes (0–9). To re-import by hand:
 
 ```bat
 set BUDC_DATA_DIR=...      :: only if you changed it
