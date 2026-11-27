@@ -14,7 +14,14 @@ udc_poc/data/reranker.pkl
 udc_poc/data/lookup_cache.json
 udc_poc/output/metrics.json
 *_respaldo_*
+*_antes_servidor.*
 udc_poc/_anterior_*/
+# classifier service (Analyze button): per-PDF analysis cache and working copies
+udc_poc/data/service_cache/
+udc_poc/data/service_tmp/
+# logs of the start-up tasks (run_server.bat / run_classifier.bat --log)
+biblioteca_udc/server/logs/
+udc_poc/logs/
 
 # --- Tesseract models (tessdata_fast clone, ~600 MB) ---
 udc_poc/data/tessdata/
@@ -39,10 +46,6 @@ build/
 .idea/
 Thumbs.db
 *.bak
-claude_prompts.md
-udc_library_context.md
-evaluate_results.txt
-pendientes*.md
 **/_anterior_*/
 **/respaldo_*/
 *_respaldo_*

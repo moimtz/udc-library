@@ -156,13 +156,12 @@ class ApiClient {
     return [for (final e in (j['cancelled'] as List)) CancelledEntry.fromJson(e as List)];
   }
 
-  /// Cancelled notations used as components of a UDC string (checked before saving an item).
-  Future<List<UdcCancelledHit>> udcCheck(String udc) async {
-    final j = Map<String, dynamic>.from(
-        await _json('GET', '/api/udc/check', query: {'udc': udc}, timeout: const Duration(seconds: 10)));
-    return [
-      for (final h in (j['cancelled'] as List)) UdcCancelledHit.fromJson(Map<String, dynamic>.from(h as Map))
-    ];
+  /// Checks a UDC string before saving an item: cancelled notations used as components and, for the item's
+  /// type (and its Extra, for musical scores), a form auxiliary that does not fit the type.
+  Future<UdcCheckResult> udcCheck(String udc, {String itemType = '', String extra = ''}) async {
+    final j = Map<String, dynamic>.from(await _json('GET', '/api/udc/check',
+        query: {'udc': udc, 'item_type': itemType, 'extra': extra}, timeout: const Duration(seconds: 10)));
+    return UdcCheckResult.fromJson(j);
   }
 
   Future<ItemsPage> items(Map<String, String> q) async {
@@ -211,6 +210,23 @@ class ApiClient {
             if (arxiv != null && arxiv.isNotEmpty) 'arxiv': arxiv,
             if (itemType != null) 'item_type': itemType,
           }));
+
+  /// Whether the classifier runs on the server: {available, loading, queue}.
+  Future<Map<String, dynamic>> classifierStatus() async =>
+      Map<String, dynamic>.from(await _json('GET', '/api/classifier', timeout: const Duration(seconds: 10)));
+
+  /// Queues the analysis of an uploaded PDF or of a stored item's PDF. Returns the job id for [analysis].
+  /// [itemType]: fit the values to this type; null = the type the classifier detects.
+  Future<String> analyze({String? tempId, int? itemId, String? itemType}) async {
+    final path = tempId != null ? '/api/uploads/$tempId/analyze' : '/api/items/$itemId/analyze';
+    final r = await _json('POST', path, body: {if (itemType != null) 'item_type': itemType});
+    return (r as Map)['job'] as String;
+  }
+
+  /// {status: queued|running|done|error, position}; when done, the values for the form
+  /// (item_type, detected_type, fields, creators, tags, udc suggestions, low_confidence, review).
+  Future<Map<String, dynamic>> analysis(String job) async =>
+      Map<String, dynamic>.from(await _json('GET', '/api/analyze/$job'));
 
   /// Moves a form's values to another item type (nothing is saved). Returns {fields, creators, report}.
   Future<Map<String, dynamic>> convertType(String from, String to, Map<String, dynamic> fields,

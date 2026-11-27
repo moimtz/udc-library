@@ -13,6 +13,7 @@ String sourceLabel(String source, double? confidence) {
     'pdfmeta': 'the PDF metadata', 'layout': 'the page layout', 'regex': 'a text pattern', 'inid': 'INID codes',
     'filename': 'the file name', 'ner': 'name recognition', 'crossref': 'Crossref', 'openlibrary': 'Open Library',
     'arxiv': 'arXiv', 'llm': 'the language model', 'classifier': 'the UDC classifier',
+    'langid': 'language detection', 'import': 'the bulk import',
   };
   final pct = confidence == null ? '' : ' (${(confidence * 100).round()}%)';
   return 'Suggested by ${names[source] ?? source}$pct, not confirmed yet';

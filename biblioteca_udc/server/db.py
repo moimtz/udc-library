@@ -213,9 +213,10 @@ WHEN EXISTS (SELECT 1 FROM item_fields f WHERE f.item_id = NEW.id AND NOT EXISTS
 BEGIN SELECT RAISE(ABORT, 'convert fields and creators before changing item type'); END;
 """
 
-# Where a value came from. 'manual' = typed by a person.
+# Where a value came from. 'manual' = typed by a person; 'langid' = language detection; 'import' = set by the
+# bulk import itself (batch tag, file-name title when nothing better was found).
 SOURCES = {"manual", "pdfmeta", "layout", "regex", "inid", "filename", "ner", "crossref", "openlibrary", "arxiv",
-           "llm", "classifier"}
+           "llm", "classifier", "langid", "import"}
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")

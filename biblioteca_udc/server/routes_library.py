@@ -13,11 +13,14 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 import catalog
+import classifier
+import coherence
 import config
 import library as lib
 import lookup
 import pdfutil
 import security
+import storage
 import udc
 from db import SOURCES, get_conn, now
 
@@ -90,6 +93,10 @@ class NoteIn(BaseModel):
     body: str
 
 
+class AnalyzeIn(BaseModel):
+    item_type: str | None = None   # fit the values to this type (the edit form's); None = the detected type
+
+
 class AutoValuesIn(BaseModel):
     """Values from an automatic source for a stored item: {code: {value, source, confidence}}."""
     fields: dict[str, dict[str, Any]] = Field(default_factory=dict)
@@ -121,7 +128,7 @@ def _main_att(conn, item_id: int):
 
 
 def _cover_path(item_id: int) -> Path:
-    return config.COVERS_DIR / f"{item_id}.jpg"
+    return storage.cover_path(item_id)
 
 
 def _tmp_pdf(temp_id: str) -> Path:
@@ -142,7 +149,7 @@ def _read_sidecar(temp_id: str) -> dict:
 
 
 def _used_bytes(conn) -> int:
-    return conn.execute("SELECT COALESCE(SUM(size),0) FROM attachments").fetchone()[0]
+    return storage.used_bytes(conn)
 
 
 def _item_error(e: lib.ItemError):
@@ -290,9 +297,14 @@ def udc_cancelled_index(request: Request, user=Depends(security.current_user), c
 
 
 @router.get("/udc/check")
-def udc_check(udc_text: str = Query(..., alias="udc"), user=Depends(security.current_user), conn=Depends(get_conn)):
-    """Warnings for a UDC string before saving: components that are cancelled notations."""
-    return {"cancelled": udc.find_cancelled(conn, udc_text)}
+def udc_check(udc_text: str = Query(..., alias="udc"), item_type: str = "", extra: str = "",
+              user=Depends(security.current_user), conn=Depends(get_conn)):
+    """Warnings for a UDC string before saving: components that are cancelled notations and, with item_type,
+    a mismatch between the type and the form auxiliary (coherence.py). Several notations: 'A ; B'."""
+    form = []
+    if item_type in catalog.get(conn).types:
+        form = coherence.check(conn, item_type, [n.strip() for n in udc_text.split(";")], extra)
+    return {"cancelled": udc.find_cancelled(conn, udc_text), "form": form}
 
 
 # --------------------------------------------------------------------------- uploads, autofill, type conversion
@@ -390,6 +402,56 @@ def autofill(body: AutofillIn, user=Depends(security.require_editor), conn=Depen
     kind, _, value = ident.partition(":")
     return {"identifier": {"type": kind, "value": value}, "source": source, "item_type": item_type,
             "suggested_type": t, **_fit(cat, item_type, found, source)}
+
+
+# --------------------------------------------------------------------------- classifier (udc_poc service)
+@router.get("/classifier")
+def classifier_status(user=Depends(security.current_user)):
+    """{available, loading, queue}: the app enables Analyze only while the classifier is running."""
+    return classifier.status()
+
+
+def _submit_analysis(path: Path, name: str, item_type: str | None) -> dict:
+    try:
+        return {"job": classifier.submit(path, name, {"filename": name, "item_type": item_type})}
+    except classifier.Unavailable as e:
+        raise HTTPException(503, str(e))
+
+
+@router.post("/uploads/{temp_id}/analyze", status_code=202)
+def analyze_upload(temp_id: str, body: AnalyzeIn = AnalyzeIn(), user=Depends(security.require_editor)):
+    """Queue the analysis of an uploaded PDF (metadata + UDC). Poll GET /analyze/{job}."""
+    side = _read_sidecar(temp_id)
+    return _submit_analysis(_tmp_pdf(temp_id), side.get("name") or "document.pdf", body.item_type)
+
+
+@router.post("/items/{item_id}/analyze", status_code=202)
+def analyze_item(item_id: int, body: AnalyzeIn = AnalyzeIn(), user=Depends(security.require_editor),
+                 conn=Depends(get_conn)):
+    row = _item_row(conn, item_id)
+    att = _main_att(conn, item_id)
+    if att is None:
+        raise HTTPException(404, "This item has no PDF to analyse.")
+    return _submit_analysis(_att_path(att, row["deleted_at"]), att["filename"], body.item_type or row["item_type"])
+
+
+@router.get("/analyze/{job_id}")
+def analyze_result(job_id: str, user=Depends(security.require_editor), conn=Depends(get_conn)):
+    """{status: queued|running|done|error, position}; when done, the values for the form (see
+    classifier.to_form). Nothing is saved: the person accepts the values by saving the form."""
+    try:
+        j = classifier.job(job_id)
+    except classifier.UnknownJob:
+        raise HTTPException(404, "This analysis is no longer available. Run it again.")
+    except classifier.Unavailable as e:
+        raise HTTPException(503, str(e))
+    out = {"status": j["status"], "position": j.get("position", 0)}
+    if j["status"] == "error":
+        out["error"] = j.get("error") or "unknown error"
+    elif j["status"] == "done":
+        meta = j.get("meta") or {}
+        out.update(classifier.to_form(catalog.get(conn), j["result"], meta.get("filename"), meta.get("item_type")))
+    return out
 
 
 @router.post("/convert-type")
@@ -493,6 +555,7 @@ def create_item(body: CreateItem, user=Depends(security.require_editor), conn=De
         pdfutil.save_cover(dest, _cover_path(old["id"]), cover)
         conn.commit()
         _sidecar(body.temp_id).unlink(missing_ok=True)
+        classifier.learn(conn, old["id"])
         return _item(conn, old["id"])
 
     try:
@@ -500,20 +563,18 @@ def create_item(body: CreateItem, user=Depends(security.require_editor), conn=De
     except lib.ItemError as e:
         conn.rollback()
         raise _item_error(e)
-    citekey = conn.execute("SELECT citekey FROM items WHERE id=?", (item_id,)).fetchone()[0]
-    dest = config.LIBRARY_DIR / f"{citekey}.pdf"
-    shutil.move(str(tmp), dest)
+    dest = None
     try:
-        conn.execute("INSERT INTO attachments(item_id, role, filename, sha256, size, mime, pages, cover_page, "
-                     "added_at, added_by) VALUES (?,'main',?,?,?,'application/pdf',?,?,?,?)",
-                     (item_id, dest.name, side["sha256"], side["size"], side["pages"], cover, now(), user["id"]))
-        pdfutil.save_cover(dest, _cover_path(item_id), cover)
+        dest = storage.add_main_file(conn, item_id, tmp, sha256=side["sha256"], size=side["size"],
+                                     pages=side["pages"], cover_page=cover, user_id=user["id"])
         conn.commit()
     except Exception:
         conn.rollback()
-        shutil.move(str(dest), tmp)
+        if dest is not None:
+            storage.undo_main_file(dest, tmp, copy=False)
         raise
     _sidecar(body.temp_id).unlink(missing_ok=True)
+    classifier.learn(conn, item_id)
     return _item(conn, item_id)
 
 
@@ -539,6 +600,7 @@ def update_item(item_id: int, body: UpdateItem, user=Depends(security.require_ed
     conn.commit()
     if new_cover:
         pdfutil.save_cover(_att_path(main, None), _cover_path(item_id), new_cover)
+    classifier.learn(conn, item_id)
     return _item(conn, item_id)
 
 

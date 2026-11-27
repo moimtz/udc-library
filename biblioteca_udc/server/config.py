@@ -42,6 +42,9 @@ def tailscale_ip() -> str:
 def listen_host() -> str:
     return tailscale_ip() if HOST.strip().lower() == "tailscale" else HOST
 
+# Classifier service (udc_poc: run_classifier.bat, same PC). Empty = no classifier (the app hides Analyze).
+CLASSIFIER_URL = os.environ.get("BUDC_CLASSIFIER_URL", "http://127.0.0.1:8766").rstrip("/")
+
 # Crossref asks API users to identify themselves (optional but polite).
 CONTACT_EMAIL = os.environ.get("BUDC_CONTACT_EMAIL", "")
 

@@ -113,9 +113,10 @@ def _apply_enrichment(rec: dict) -> dict | None:
     return e
 
 
-def process(path, clf, args):
+def process(path, clf, args, pdf=None):
+    """pdf: ya leído con read_pdf (el servicio lo lee antes para decidir si hace OCR)."""
     from .pdfio import read_pdf
-    pdf = read_pdf(path, ocr=args.ocr)
+    pdf = pdf or read_pdf(path, ocr=args.ocr)
     rec = build_record(pdf, use_ner=args.ner)
     enr = None
     if config.ENRICH_ONLINE and not getattr(args, "offline", False):
@@ -308,6 +309,11 @@ def cmd_train(a):
     print(json.dumps(Feedback().train_reranker(), ensure_ascii=False, indent=2))
 
 
+def cmd_serve(a):
+    from .service import serve
+    serve(a)
+
+
 def cmd_evaluate(a):
     tree = Tree.load(config.UDC_RDF, config.LABEL_LANGS)
     res = json.loads(Path(a.results).read_text(encoding="utf-8"))
@@ -393,6 +399,9 @@ def main():
                         "'' para desactivar")
     s.set_defaults(f=cmd_review)
     s = sp.add_parser("train", help="reentrena el reranker con las confirmaciones"); s.set_defaults(f=cmd_train)
+    s = sp.add_parser("serve", help="servicio local para el servidor de la biblioteca (ver service.py)")
+    s.add_argument("--host", default=config.SERVICE_HOST); s.add_argument("--port", type=int, default=config.SERVICE_PORT)
+    s.add_argument("--model"); s.set_defaults(f=cmd_serve)
     s = sp.add_parser("evaluate", help="métricas contra gold.csv")
     s.add_argument("results", nargs="?", default=str(config.OUTPUT_DIR / "results.json"))
     s.add_argument("--gold", default=str(config.OUTPUT_DIR / "gold.csv"))

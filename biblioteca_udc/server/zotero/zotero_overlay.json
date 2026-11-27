@@ -280,5 +280,22 @@
   "sponsor": "The principal author of a bill or piece of legislation. The author for Bill and Legislation items.",
   "translator": "The translator of an item. If the same person is both the editor and translator of a work, enter their name as both an Editor and a Translator in separate fields.",
   "wordsBy": "The individual who wrote the words in an audio recording (e.g., the lyricist or speechwriter)."
+ },
+ "udc_form_by_type": {
+  "_about": "Coherence warnings between the Zotero type and the UDC form auxiliary (never a rule: UDC does not require a form). forms: any of these (or a narrower one, '(043)' covers '(043.2)') is expected in the notation. reverse: the form also implies the type, so it is flagged on items of any other type. Musical scores (Extra 'Type: musical_score') are checked against class 78 apart.",
+  "thesis": {"forms": ["(043)"], "reverse": true},
+  "patent": {"forms": ["(088.8)"], "reverse": true},
+  "standard": {"forms": ["(083.74)"], "reverse": true},
+  "statute": {"forms": ["(094)"]},
+  "case": {"forms": ["(094.8)", "(094.9)"]},
+  "report": {"forms": ["(047)"]},
+  "journalArticle": {"forms": ["(045)"]},
+  "magazineArticle": {"forms": ["(045)"]},
+  "newspaperArticle": {"forms": ["(046)"]},
+  "letter": {"forms": ["(044)"]},
+  "presentation": {"forms": ["(042)"]},
+  "dictionaryEntry": {"forms": ["(038)"]},
+  "encyclopediaArticle": {"forms": ["(031)"]},
+  "map": {"forms": ["(084.3)"]}
  }
 }

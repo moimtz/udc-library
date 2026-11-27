@@ -205,6 +205,11 @@ class Item {
         udcText = _s(j['udc_text']),
         matches = _parseMatches(j['matches']);
 
+  /// Coherence warnings between the type and the UDC form (full item only; GET /api/items/{id}).
+  List<String> get warnings => [
+        for (final w in (raw['warnings'] as List?) ?? const []) _s((w as Map)['message'])
+      ];
+
   Attachment? get main {
     for (final a in attachments) {
       if (a.isMain) return a;
@@ -575,6 +580,20 @@ class UdcCancelledHit {
           for (final c in (j['cancelled'] as List? ?? const []))
             UdcCancellation.fromJson(Map<String, dynamic>.from(c as Map))
         ],
+      );
+}
+
+/// GET /api/udc/check: cancelled notations, and type <-> UDC form warnings when the type was sent.
+class UdcCheckResult {
+  final List<UdcCancelledHit> cancelled;
+  final List<String> form;
+  UdcCheckResult(this.cancelled, this.form);
+  factory UdcCheckResult.fromJson(Map<String, dynamic> j) => UdcCheckResult(
+        [
+          for (final h in (j['cancelled'] as List? ?? const []))
+            UdcCancelledHit.fromJson(Map<String, dynamic>.from(h as Map))
+        ],
+        [for (final w in (j['form'] as List? ?? const [])) _s((w as Map)['message'])], // older servers: none
       );
 }
 

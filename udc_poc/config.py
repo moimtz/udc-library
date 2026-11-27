@@ -21,6 +21,9 @@ UDC_RDF = BASE_DIR.parent / "biblioteca_udc" / "server" / "udc_data" / "udcs-sko
 INDEX_DIR = DATA_DIR / "index"                # embeddings del árbol (se regeneran solos)
 FEEDBACK_DB = DATA_DIR / "feedback.db"        # SOLO confirmaciones; nunca toca biblioteca.db
 RERANKER_PATH = DATA_DIR / "reranker.pkl"
+SERVICE_CACHE = DATA_DIR / "service_cache"     # `serve`: un JSON por PDF analizado (para aprender al guardar)
+SERVICE_HOST = "127.0.0.1"                     # `serve` escucha solo en este PC (el servidor está al lado)
+SERVICE_PORT = 8766
 
 # ------------------------------------------------------------ embeddings
 EMBEDDING_MODEL = "BAAI/bge-m3"                # ~2.3 GB, multilingüe. Respaldo: "intfloat/multilingual-e5-small"

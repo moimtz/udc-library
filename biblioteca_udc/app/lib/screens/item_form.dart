@@ -116,6 +116,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   String _phase = 'ready'; // uploading | ready | error
   bool _busy = false;
   String? _checkedUdc; // UDC string already checked for cancelled notations (not asked again)
+  String? _checkedForm; // UDC + type + Extra whose form warnings the user accepted (not asked again)
   String? _tempId;
   int _pages = 1;
   int _coverPage = 1;
@@ -123,6 +124,15 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   List<Map<String, dynamic>> _dups = [];
   String _dupAction = 'check';
   int? _replaceId;
+
+  // Classifier (Analyze): availability on the server, the running job and what it suggested.
+  bool _clsAvailable = false;
+  bool _clsLoading = false;
+  String? _job;
+  bool _typeTouched = false; // the person chose the type: the analysis keeps it
+  List<Map<String, dynamic>> _udcSugg = [];
+  bool _lowConfidence = false;
+  final List<_Suggestion> _pending = []; // values not applied because the field already had one
 
   String? _bannerText;
   _Kind _bannerKind = _Kind.info;
@@ -150,11 +160,17 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       _coverPage = it.coverPage;
       _pages = it.pages ?? 1;
       _page.text = '$_coverPage';
+      if (it.warnings.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _banner(it.warnings.join('\n'), _Kind.warning, seconds: 10);
+        });
+      }
     } else {
       _phase = 'uploading';
       WidgetsBinding.instance.addPostFrameCallback((_) => _upload());
     }
     if (_creators.isEmpty) _creators.add(_CreatorRow(_typeDef?.primaryCreator ?? 'author', '', ''));
+    _checkClassifier();
   }
 
   @override
@@ -404,6 +420,176 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     }
   }
 
+  // ------------------------------------------------------------------ analyze (classifier)
+  Future<void> _checkClassifier() async {
+    final api = context.read<AppState>().api;
+    try {
+      final r = await api.classifierStatus();
+      if (!mounted) return;
+      setState(() {
+        _clsAvailable = r['available'] == true;
+        _clsLoading = r['loading'] == true;
+      });
+    } catch (_) {} // an older server or no connection: the button stays disabled
+  }
+
+  /// Queues the analysis and polls it every 2 s. The form stays editable meanwhile; closing it stops waiting.
+  Future<void> _analyze() async {
+    final s = context.read<AppState>();
+    // the person's type is kept; otherwise the detected one is used (and the form switches to it)
+    final itemType = _isEdit || _typeTouched ? _type : null;
+    String job;
+    try {
+      job = _isEdit
+          ? await s.api.analyze(itemId: widget.item!.id, itemType: itemType)
+          : await s.api.analyze(tempId: _tempId, itemType: itemType);
+    } on ApiException catch (e) {
+      if (mounted) _banner(e.message, _Kind.error, seconds: 8);
+      if (e.status == 503) _checkClassifier();
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _job = job);
+    final t0 = DateTime.now();
+    var last = '';
+    var failures = 0; // a busy classifier may miss a poll: give up only after ~30 s without an answer
+    try {
+      while (mounted && _job == job) {
+        final Map<String, dynamic> r;
+        try {
+          r = await s.api.analysis(job);
+          failures = 0;
+        } on ApiException catch (e) {
+          if (e.status != 503 || ++failures >= 10) rethrow;
+          await Future.delayed(const Duration(seconds: 3));
+          continue;
+        }
+        if (!mounted) return;
+        final st = r['status'] as String;
+        if (st == 'done') {
+          await _applyAnalysis(r, DateTime.now().difference(t0));
+          break;
+        }
+        if (st == 'error') {
+          _banner('The analysis failed: ${r['error']}', _Kind.error, seconds: 10);
+          break;
+        }
+        final ahead = ((r['position'] as num?)?.toInt() ?? 0) - 1;
+        final text = st == 'queued' && ahead > 0
+            ? 'Waiting for the classifier ($ahead ahead)... You can keep editing.'
+            : 'Analyzing the PDF (about 30 s, more if it needs OCR)... You can keep editing.';
+        if (text != last) _banner(last = text, _Kind.info);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    } on ApiException catch (e) {
+      if (mounted) _banner(e.message, _Kind.error, seconds: 8);
+    } finally {
+      if (mounted && _job == job) setState(() => _job = null);
+    }
+  }
+
+  /// Fills empty fields (and automatic ones with less confidence); a value the person typed or confirmed is
+  /// never replaced: the new one goes to the suggestions card. The UDC suggestions appear as chips.
+  Future<void> _applyAnalysis(Map<String, dynamic> r, Duration took) async {
+    final s = context.read<AppState>();
+    final type = r['item_type'] as String;
+    if (type != _type && !await _changeType(type, quiet: true)) return;
+    if (!mounted) return;
+    final fields = Map<String, dynamic>.from(r['fields'] as Map);
+    final creators = [
+      for (final c in (r['creators'] as List?) ?? []) Creator.fromJson(Map<String, dynamic>.from(c as Map))
+    ];
+    final udc = [for (final u in (r['udc'] as List?) ?? []) Map<String, dynamic>.from(u as Map)];
+    final review = [for (final x in (r['review'] as List?) ?? []) '$x'];
+    final td = _typeDef;
+    var filled = 0;
+    setState(() {
+      _pending.clear();
+      final extraNew = fields.remove('extra');
+      for (final e in fields.entries) {
+        final fv = FieldValue.fromJson(e.value);
+        final f = td?.field(e.key);
+        final cur = _ctl(e.key).text.trim();
+        if (f == null || f.hidden || fv.value.trim().isEmpty || cur == fv.value.trim()) continue;
+        final p = _prov[e.key];
+        final weaker = p != null && p.isAutomatic && !p.confirmed && p.value.trim() == cur &&
+            (p.confidence ?? 0) < (fv.confidence ?? 0);
+        if (cur.isEmpty || weaker) {
+          _mergeValues({e.key: fv});
+          filled++;
+        } else {
+          _pending.add(_Suggestion(f.label, fv.value, () async => setState(() => _mergeValues({e.key: fv}))));
+        }
+      }
+      if (extraNew != null) {
+        // values with no field in this type: appended to Extra, never replacing what is there
+        final add = FieldValue.fromJson(extraNew).value.trim();
+        final old = _ctl('extra').text.trim();
+        if (add.isNotEmpty && !old.contains(add)) _ctl('extra').text = [if (old.isNotEmpty) old, add].join('\n');
+      }
+      if (creators.isNotEmpty) {
+        final names = creators.map(_creatorText).toList();
+        final have = [for (final c in _creators) if (!c.isEmpty) _creatorText(Creator(firstName: c.first.text.trim(), lastName: c.last.text.trim()))];
+        if (have.isEmpty) {
+          _setCreators(creators);
+          filled++;
+        } else if (names.join('|').toLowerCase() != have.join('|').toLowerCase()) {
+          _pending.add(_Suggestion('Creators', names.join('; '), () async => setState(() => _setCreators(creators))));
+        }
+      }
+      _addTags([for (final t in (r['tags'] as List?) ?? []) TagValue.fromJson(t)]);
+      final dt = (r['detected_type'] as Map?)?['value'] as String?;
+      final dtDef = dt == null ? null : s.schema.type(dt);
+      if (dtDef != null && dtDef.enabled && dt != _type) {
+        _pending.add(_Suggestion('Item type', dtDef.label, () async {
+          _typeTouched = true;
+          await _changeType(dt!);
+        }));
+      }
+      _udcSugg = udc;
+      _lowConfidence = r['low_confidence'] == true;
+      if (udc.isNotEmpty && _splitUdc(_udc.text).isEmpty) _useUdc(udc.first);
+    });
+    final secs = took.inSeconds;
+    final parts = [
+      'Analysis done in $secs s${r['ocr'] == true ? ' (with OCR)' : ''}: $filled field${filled == 1 ? '' : 's'} filled.',
+      if (_pending.isNotEmpty) 'Other values are in the suggestions card.',
+      if (_lowConfidence) 'Low confidence: check the UDC by hand.',
+      if (review.isNotEmpty) 'Check: ${review.join('; ')}.',
+      'Check the marked fields before saving.',
+    ];
+    _banner(parts.join(' '), _lowConfidence || review.isNotEmpty ? _Kind.warning : _Kind.success, seconds: 15);
+  }
+
+  static String _creatorText(Creator c) =>
+      c.firstName.trim().isEmpty ? c.lastName.trim() : '${c.lastName.trim()}, ${c.firstName.trim()}';
+
+  /// A classifier suggestion becomes the main notation (the others, after ' ; ', are kept).
+  void _useUdc(Map<String, dynamic> u) {
+    final n = u['notation'] as String;
+    final list = _splitUdc(_udc.text);
+    if (list.isEmpty) {
+      list.add(n);
+    } else {
+      list[0] = n;
+    }
+    _udcProv[n] = UdcValue(n, source: 'classifier', confidence: (u['confidence'] as num?)?.toDouble(), confirmed: false);
+    _udc.text = list.join(' ; ');
+  }
+
+  String _udcTip(Map<String, dynamic> u) {
+    final aux = [
+      for (final a in (u['aux'] as List?) ?? [])
+        if (a is Map) '${a['code']}  ${a['label'] ?? ''}${'${a['source']}'.contains('experimental') ? '  (experimental)' : ''}'
+    ];
+    final broader = [for (final b in (u['broader'] as List?) ?? []) '$b'];
+    return [
+      if ('${u['label'] ?? ''}'.isNotEmpty) '${u['label']}',
+      ...aux,
+      if (broader.isNotEmpty) 'Broader: ${broader.join(' > ')}',
+    ].join('\n');
+  }
+
   // ------------------------------------------------------------------ submit
   Future<void> _submit() async {
     final s = context.read<AppState>();
@@ -412,7 +598,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       _banner('${_typeDef?.field(titleField)?.label ?? 'Title'} is required.', _Kind.error, seconds: 5);
       return;
     }
-    if (!await _checkCancelledUdc()) return;
+    if (!await _checkUdc()) return;
     setState(() => _busy = true);
     try {
       if (_isEdit) {
@@ -455,32 +641,41 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     }
   }
 
-  /// Warns, without blocking, when the UDC uses cancelled notations and offers their replacements.
+  /// Warns, without blocking, when the UDC uses cancelled notations (and offers their replacements) or when
+  /// its form auxiliary does not fit the item type (a thesis without (043), a patent without (088.8)...).
   /// Returns false when the user goes back to editing. Offline (or an older server) never blocks saving.
-  Future<bool> _checkCancelledUdc() async {
+  Future<bool> _checkUdc() async {
     final s = context.read<AppState>();
     for (var round = 0; round < 10; round++) {
       final udc = _udc.text.trim();
-      if (udc.isEmpty || udc == _checkedUdc) return true;
-      List<UdcCancelledHit> hits;
+      final extra = _ctl('extra').text.trim();
+      final formKey = '$udc|$_type|$extra';
+      if (udc.isEmpty || (udc == _checkedUdc && formKey == _checkedForm)) return true;
+      UdcCheckResult r;
       try {
-        hits = await s.api.udcCheck(udc);
+        r = await s.api.udcCheck(udc, itemType: _type, extra: extra);
       } catch (_) {
         return true;
       }
       if (!mounted) return false;
-      if (hits.isEmpty) {
-        _checkedUdc = udc;
+      if (r.cancelled.isNotEmpty && udc != _checkedUdc) {
+        final res = await showDialog<String>(
+            context: context, builder: (_) => _CancelledUdcDialog(udc: udc, hits: r.cancelled, lang: s.udcLang));
+        if (res == null || !mounted) return false; // back to editing
+        if (res != udc) {
+          setState(() => _udc.text = res); // one component replaced: check the new string
+          continue;
+        }
+      }
+      _checkedUdc = udc; // no cancelled notations, or saved as it is
+      if (r.form.isEmpty || formKey == _checkedForm) {
+        _checkedForm = formKey;
         return true;
       }
-      final res = await showDialog<String>(
-          context: context, builder: (_) => _CancelledUdcDialog(udc: udc, hits: hits, lang: s.udcLang));
-      if (res == null || !mounted) return false; // back to editing
-      if (res == udc) {
-        _checkedUdc = udc; // save as it is
-        return true;
-      }
-      setState(() => _udc.text = res); // one component replaced: check the new string
+      final ok = await showDialog<bool>(context: context, builder: (_) => _FormUdcDialog(messages: r.form));
+      if (ok != true || !mounted) return false;
+      _checkedForm = formKey;
+      return true;
     }
     return true;
   }
@@ -591,6 +786,18 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                 TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.cancelAll), child: const Text('Cancel all')),
                 TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.skipped), child: const Text('Skip file')),
               ],
+              Tooltip(
+                message: _clsAvailable
+                    ? 'Suggest the type, the fields and the UDC from the PDF itself (local AI on the server)'
+                    : (_clsLoading ? 'The classifier is starting on the server. Try again in a minute.' : 'Classifier not available on the server'),
+                child: OutlinedButton.icon(
+                  onPressed: ready && _clsAvailable && _job == null ? _analyze : null,
+                  icon: _job != null
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.psychology_outlined, size: 18),
+                  label: Text(_job != null ? 'Analyzing...' : 'Analyze'),
+                ),
+              ),
               OutlinedButton.icon(
                 onPressed: ready ? _autofill : null,
                 icon: const Icon(Icons.auto_fix_high, size: 18),
@@ -695,6 +902,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         .join('; ');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (!_isEdit && _dups.isNotEmpty) _dupCard(),
+      if (_pending.isNotEmpty) _pendingCard(),
       DropdownButtonFormField<String>(
         value: t != null ? _type : null,
         decoration: InputDecoration(
@@ -703,7 +911,13 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           suffixIcon: t == null || t.help.isEmpty ? null : _help(t.help),
         ),
         items: [for (final x in types) DropdownMenuItem(value: x.code, child: Text(x.label))],
-        onChanged: _busy ? null : (v) => v == null ? null : _changeType(v),
+        onChanged: _busy
+            ? null
+            : (v) {
+                if (v == null) return;
+                _typeTouched = true;
+                _changeType(v);
+              },
       ),
       for (final f in fields) ...[
         gap,
@@ -745,6 +959,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           padding: const EdgeInsets.only(top: 4),
           child: Text(udcText, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ),
+      if (_udcSugg.isNotEmpty) _udcChips(),
       gap,
       TextField(
         controller: _tags,
@@ -752,6 +967,78 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             labelText: 'Tags', hintText: 'Separate tags with ;', border: OutlineInputBorder()),
       ),
     ]);
+  }
+
+  /// Values from the analysis that were not applied because the field already had one.
+  Widget _pendingCard() {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      color: cs.secondaryContainer,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.psychology_outlined, size: 18, color: cs.onSecondaryContainer),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('The classifier suggests other values',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSecondaryContainer)),
+            ),
+            TextButton(onPressed: () => setState(_pending.clear), child: const Text('Dismiss all')),
+          ]),
+          for (final p in List.of(_pending))
+            Row(children: [
+              Expanded(
+                child: Text('${p.label}: ${p.value}',
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: cs.onSecondaryContainer)),
+              ),
+              TextButton(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        await p.apply();
+                        if (mounted) setState(() => _pending.remove(p));
+                      },
+                child: const Text('Use'),
+              ),
+              IconButton(
+                tooltip: 'Dismiss',
+                onPressed: () => setState(() => _pending.remove(p)),
+                icon: const Icon(Icons.close, size: 18),
+              ),
+            ]),
+        ]),
+      ),
+    );
+  }
+
+  /// The classifier's UDC suggestions: tapping one makes it the main notation.
+  Widget _udcChips() {
+    final cs = Theme.of(context).colorScheme;
+    final list = _splitUdc(_udc.text);
+    final main = list.isEmpty ? '' : list.first;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(
+          _lowConfidence ? 'Classifier suggestions (low confidence: check them by hand)' : 'Classifier suggestions',
+          style: TextStyle(fontSize: 12, color: _lowConfidence ? cs.error : cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final u in _udcSugg)
+            Tooltip(
+              message: _udcTip(u),
+              child: ChoiceChip(
+                label: Text('${u['notation']}   ${(((u['confidence'] as num?) ?? 0) * 100).round()}%'),
+                selected: main == u['notation'],
+                onSelected: (_) => setState(() => _useUdc(u)),
+              ),
+            ),
+        ]),
+      ]),
+    );
   }
 
   Widget _help(String text) => Tooltip(
@@ -872,6 +1159,14 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   }
 }
 
+/// A value from the analysis that the person may apply ("Use") or dismiss.
+class _Suggestion {
+  final String label;
+  final String value;
+  final Future<void> Function() apply;
+  _Suggestion(this.label, this.value, this.apply);
+}
+
 /// component replaced, the same string ("Save as it is") or null ("Back to editing").
 class _CancelledUdcDialog extends StatelessWidget {
   final String udc;
@@ -926,6 +1221,33 @@ class _CancelledUdcDialog extends StatelessWidget {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back to editing')),
         FilledButton.tonal(onPressed: () => Navigator.pop(context, udc), child: const Text('Save as it is')),
+      ],
+    );
+  }
+}
+
+/// Type <-> UDC form mismatch: true = "Save as it is", null = "Back to editing". A warning, never a rule.
+class _FormUdcDialog extends StatelessWidget {
+  final List<String> messages;
+  const _FormUdcDialog({required this.messages});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      icon: Icon(Icons.rule, color: cs.tertiary),
+      title: const Text('Type and UDC form do not match'),
+      content: SizedBox(
+        width: 520,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final m in messages) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(m)),
+          Text('Often one of the two was mistyped: change the item type or the UDC, or keep both if they are right.',
+              style: TextStyle(color: cs.onSurfaceVariant)),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back to editing')),
+        FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: const Text('Save as it is')),
       ],
     );
   }

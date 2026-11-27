@@ -294,6 +294,10 @@ def load_items(conn, ids, *, light: bool = False) -> list[dict]:
         it["creators_text"] = creators_text(it["creators"])
         it["udc_text"] = " ; ".join(u["notation"] for u in it["udc"])
         it["main"] = next((a for a in it["attachments"] if a["role"] == "main"), None)
+        if not light:
+            import coherence   # here: coherence imports this module
+            it["warnings"] = coherence.check(conn, it["item_type"], [u["notation"] for u in it["udc"]],
+                                             it["fields"].get("extra", {}).get("value", ""))
         out.append(it)
     return out
 
@@ -340,9 +344,15 @@ def citekey_for(conn, item_id: int) -> str:
 
 
 # --------------------------------------------------------------------------- writing (people)
-def _write_fields(conn, cat, item_id: int, fields: dict[str, dict], user_id) -> None:
-    """Replace the item's fields with `fields`, as saved by a person: every value ends up confirmed.
-    A value left as it was keeps its source (so automatic sources can be measured)."""
+def _confirmed(confirm: bool, source: str) -> int:
+    """Saved by a person: everything is confirmed. Saved by a program (bulk import): only manual values."""
+    return 1 if confirm or source == "manual" else 0
+
+
+def _write_fields(conn, cat, item_id: int, fields: dict[str, dict], user_id, confirm: bool = True) -> None:
+    """Replace the item's fields with `fields`, as saved by a person: every value ends up confirmed
+    (confirm=False: only manual values). A value left as it was keeps its source (so automatic sources
+    can be measured)."""
     old = {r["field"]: r for r in conn.execute("SELECT * FROM item_fields WHERE item_id=?", (item_id,))}
     ts = now()
     for code, r in old.items():
@@ -351,19 +361,20 @@ def _write_fields(conn, cat, item_id: int, fields: dict[str, dict], user_id) -> 
     for code, v in fields.items():
         prev = old.get(code)
         if prev is not None and prev["value"] == v["value"]:
-            if not prev["confirmed"]:
+            if not prev["confirmed"] and confirm:
                 conn.execute("UPDATE item_fields SET confirmed=1, updated_at=?, updated_by=? "
                              "WHERE item_id=? AND field=?", (ts, user_id, item_id, code))
             continue
         conn.execute(
             "INSERT INTO item_fields(item_id, field, value, norm, source, confidence, confirmed, updated_at, updated_by) "
-            "VALUES (?,?,?,?,?,?,1,?,?) ON CONFLICT(item_id, field) DO UPDATE SET value=excluded.value, "
-            "norm=excluded.norm, source=excluded.source, confidence=excluded.confidence, confirmed=1, "
-            "updated_at=excluded.updated_at, updated_by=excluded.updated_by",
-            (item_id, code, v["value"], norm_value(cat, code, v["value"]), v["source"], v["confidence"], ts, user_id))
+            "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id, field) DO UPDATE SET value=excluded.value, "
+            "norm=excluded.norm, source=excluded.source, confidence=excluded.confidence, "
+            "confirmed=excluded.confirmed, updated_at=excluded.updated_at, updated_by=excluded.updated_by",
+            (item_id, code, v["value"], norm_value(cat, code, v["value"]), v["source"], v["confidence"],
+             _confirmed(confirm, v["source"]), ts, user_id))
 
 
-def _write_creators(conn, item_id: int, creators: list[dict]) -> None:
+def _write_creators(conn, item_id: int, creators: list[dict], confirm: bool = True) -> None:
     old = {(r["creator_type"], r["last_name"], r["first_name"]): r
            for r in conn.execute("SELECT * FROM item_creators WHERE item_id=?", (item_id,))}
     conn.execute("DELETE FROM item_creators WHERE item_id=?", (item_id,))
@@ -371,8 +382,9 @@ def _write_creators(conn, item_id: int, creators: list[dict]) -> None:
         prev = old.get((c["creator_type"], c["last_name"], c["first_name"]))
         src, conf = (prev["source"], prev["confidence"]) if prev else (c["source"], c["confidence"])
         conn.execute("INSERT INTO item_creators(item_id, position, creator_type, last_name, first_name, field_mode, "
-                     "source, confidence, confirmed) VALUES (?,?,?,?,?,?,?,?,1)",
-                     (item_id, pos, c["creator_type"], c["last_name"], c["first_name"], c["field_mode"], src, conf))
+                     "source, confidence, confirmed) VALUES (?,?,?,?,?,?,?,?,?)",
+                     (item_id, pos, c["creator_type"], c["last_name"], c["first_name"], c["field_mode"], src, conf,
+                      _confirmed(confirm, src)))
 
 
 def _write_tags(conn, item_id: int, tags: list[dict]) -> None:
@@ -387,19 +399,20 @@ def _write_tags(conn, item_id: int, tags: list[dict]) -> None:
     conn.execute("DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM item_tags)")
 
 
-def _write_udc(conn, item_id: int, entries: list[dict]) -> None:
+def _write_udc(conn, item_id: int, entries: list[dict], confirm: bool = True) -> None:
     old = {r["notation"]: r for r in conn.execute("SELECT * FROM item_udc WHERE item_id=?", (item_id,))}
     conn.execute("DELETE FROM item_udc WHERE item_id=?", (item_id,))
     for pos, u in enumerate(entries):
         prev = old.get(u["notation"])
         src, conf = (prev["source"], prev["confidence"]) if prev else (u["source"], u["confidence"])
         conn.execute("INSERT INTO item_udc(item_id, position, notation, source, confidence, confirmed) "
-                     "VALUES (?,?,?,?,?,1)", (item_id, pos, u["notation"], src, conf))
+                     "VALUES (?,?,?,?,?,?)", (item_id, pos, u["notation"], src, conf, _confirmed(confirm, src)))
     udc.refresh_item_nodes(conn, item_id)
 
 
-def save_item(conn, user_id, data: dict, item_id: int | None = None) -> int:
+def save_item(conn, user_id, data: dict, item_id: int | None = None, *, confirm: bool = True) -> int:
     """Create (item_id None) or replace an item's bibliographic data as saved by a person.
+    confirm=False (bulk import): values keep confirmed=0 unless their source is 'manual'.
 
     data: {item_type, fields: {code: str | {value, source, confidence}}, creators: [...], tags: [...],
     udc: [...]}. Runs inside the caller's transaction; the caller commits. Returns the item id.
@@ -435,10 +448,10 @@ def save_item(conn, user_id, data: dict, item_id: int | None = None) -> int:
                          "(SELECT creator_type FROM item_type_creators WHERE item_type=?)", (item_id, itype))
             conn.execute("UPDATE items SET item_type=? WHERE id=?", (itype, item_id))
         conn.execute("UPDATE items SET modified_at=?, modified_by=? WHERE id=?", (ts, user_id, item_id))
-    _write_fields(conn, cat, item_id, fields, user_id)
-    _write_creators(conn, item_id, creators)
+    _write_fields(conn, cat, item_id, fields, user_id, confirm)
+    _write_creators(conn, item_id, creators, confirm)
     _write_tags(conn, item_id, tags)
-    _write_udc(conn, item_id, notations)
+    _write_udc(conn, item_id, notations, confirm)
     refresh_derived(conn, item_id)
     if new:
         conn.execute("UPDATE items SET citekey=? WHERE id=?", (citekey_for(conn, item_id), item_id))

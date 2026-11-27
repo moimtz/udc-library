@@ -23,6 +23,7 @@ def data_dir(tmp_path, monkeypatch):
         monkeypatch.setattr(config, name, tmp_path / sub)
     monkeypatch.setattr(config, "JSON_BACKUP_DIR", tmp_path / "backups" / "json")
     monkeypatch.setattr(config, "DB_PATH", tmp_path / "biblioteca.db")
+    monkeypatch.setattr(config, "CLASSIFIER_URL", "")   # never the real classifier service (test_classifier fakes it)
     return tmp_path
 
 
