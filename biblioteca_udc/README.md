@@ -204,8 +204,10 @@ con su propio venv (torch, bge-m3) y en CPU. La biblioteca funciona igual sin é
 
 1. Instala el PoC en el servidor como dice `udc_poc\README.md` §1 (venv, `pip install`, Tesseract para OCR) y
    corre una vez `.venv\Scripts\python.exe -m udcpoc index` (descarga el modelo y crea el índice).
-2. Arráncalo junto al servidor: `udc_poc\run_classifier.bat` (ventana aparte; tarda ~1 minuto en cargar y
-   ocupa ~3-4 GB de RAM). Para que arranque con el PC, `install_autostart.bat` crea también su tarea (ver
+2. Arráncalo junto al servidor: `udc_poc\run_classifier.bat` (ventana aparte). El modelo **no** se carga al
+   arrancar: se carga con el primer Analyze (~1 minuto más ese análisis), ocupa ~2,5 GB mientras se usa y se
+   libera tras 15 minutos sin análisis (queda ~0,9 GB). Se cambia en `udc_poc\config.py`:
+   `SERVICE_IDLE_MINUTES` (0 = cargarlo al arrancar y no liberarlo nunca). Para que arranque con el PC, `install_autostart.bat` crea también su tarea (ver
    «Que arranque solo con el PC»).
 3. Otro puerto o ninguno: `set BUDC_CLASSIFIER_URL=http://127.0.0.1:8766` en `run_server.bat` (vacío = sin
    clasificador).
@@ -334,15 +336,15 @@ El servidor escucha solo en la IP de Tailscale, así que en la propia laptop la 
 El PoC ya está instalado en la laptop (`udc_poc\.venv`, índice creado, Tesseract). Escucha solo en `127.0.0.1`:
 solo lo usa el servidor, que está al lado.
 
-1. Arranca `C:\UDC Library\udc_poc\run_classifier.bat` (doble clic). Tras ~40 s dice
-   `Clasificador listo (... N ejemplos aprendidos)`.
+1. Arranca `C:\UDC Library\udc_poc\run_classifier.bat` (doble clic). Dice `Clasificador listo.` al momento; el
+   modelo se carga con el primer Analyze (`Modelo cargado (... N ejemplos aprendidos)`).
 2. Comprueba en la laptop `http://127.0.0.1:8766/health`: debe decir `"ready": true`.
 
 Cada ítem analizado que se guarde en la app se vuelve ejemplo de aprendizaje en `udc_poc\data\feedback.db` (la
 misma base que alimenta `review`). Si quieres poder descartar lo que aprenda en esta etapa, respáldala antes:
 `copy data\feedback.db data\feedback_antes_servidor.db` (y lo mismo con `reranker.pkl`), en la carpeta `udc_poc`.
 
-Ocupa ~3-4 GB de RAM: con el servidor y la app cabe en 16 GB. Mientras corres `udcpoc run` (4.5), ciérralo para
+Ocupa ~2,5 GB de RAM mientras analiza y ~0,9 GB tras 15 minutos sin uso: con el servidor y la app cabe en 16 GB. Mientras corres `udcpoc run` (4.5), ciérralo para
 no cargar un segundo modelo. Ese rato, el botón Analyze queda desactivado.
 
 **Arranque automático** (opcional): igual que en el PC de la escuela, con `install_autostart.bat` (sección 1,

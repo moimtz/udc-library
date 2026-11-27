@@ -477,7 +477,9 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         final ahead = ((r['position'] as num?)?.toInt() ?? 0) - 1;
         final text = st == 'queued' && ahead > 0
             ? 'Waiting for the classifier ($ahead ahead)... You can keep editing.'
-            : 'Analyzing the PDF (about 30 s, more if it needs OCR)... You can keep editing.';
+            : r['loading'] == true
+                ? 'Loading the classifier model (about 1 min after a pause)... You can keep editing.'
+                : 'Analyzing the PDF (about 30 s, more if it needs OCR)... You can keep editing.';
         if (text != last) _banner(last = text, _Kind.info);
         await Future.delayed(const Duration(seconds: 2));
       }

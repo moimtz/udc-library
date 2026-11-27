@@ -1,13 +1,14 @@
 """Servicio local del clasificador para el servidor de la biblioteca:  python -m udcpoc serve
 
-Corre en el mismo PC que el servidor y escucha solo en 127.0.0.1 (config.SERVICE_HOST/PORT). Carga el modelo
-una vez y atiende una cola: un trabajo a la vez, porque la CPU es compartida. HTTP + JSON:
+Corre en el mismo PC que el servidor y escucha solo en 127.0.0.1 (config.SERVICE_HOST/PORT). Carga
+el modelo con el primer análisis y lo libera tras SERVICE_IDLE_MINUTES sin uso (--idle; 0 = cargarlo al
+arrancar y no liberarlo). Atiende una cola: un trabajo a la vez, porque la CPU es compartida. HTTP + JSON:
 
-  GET  /health          {ready, error, queue}
+  GET  /health          {ready, loaded, error, queue}
   POST /jobs            {path, name, meta}            -> 202 {job}    analizar un PDF (meta vuelve tal cual;
                                                                       name = nombre original del archivo)
   POST /learn           {sha256, notation, title, file} -> 202 {job}  aprender la UDC que guardó una persona
-  GET  /jobs/<id>       {status: queued|running|done|error, position, result | error, meta}
+  GET  /jobs/<id>       {status: queued|running|done|error, position, loading, result | error, meta}
 
 - OCR solo si el PDF es escaneado (sin capa de texto útil).
 - Cada análisis deja data/service_cache/<sha256>.json (embedding y candidatos): /learn lo necesita para
@@ -17,6 +18,7 @@ una vez y atiende una cola: un trabajo a la vez, porque la CPU es compartida. HT
 from __future__ import annotations
 
 import base64
+import gc
 import hashlib
 import json
 import queue
@@ -44,6 +46,7 @@ class _State:
         self.jobs: dict[str, dict] = {}
         self.q: queue.Queue = queue.Queue()
         self.ready = False
+        self.loaded = False                    # el modelo está en memoria (ver _worker y SERVICE_IDLE_MINUTES)
         self.error: str | None = None
 
 
@@ -183,24 +186,48 @@ def _learn(p: dict, tree, fb, clf) -> dict:
     return {"learned": True, "rank": rank, "examples": fb.count(), "reranker": info}
 
 
+def _load_model(model) -> SimpleNamespace:
+    """Árbol, modelo de embeddings, índice y feedback.db (~40 s, ~3-4 GB)."""
+    from .classify import Classifier
+    from .cli import _load
+    from .feedback import Feedback, Reranker
+    t0 = time.time()
+    tree, emb, idx = _load(model)
+    fb = Feedback()
+    clf = Classifier(tree, idx, emb, feedback=fb, reranker=Reranker.load())
+    print(f"Modelo cargado ({time.time() - t0:.0f} s, {fb.count()} ejemplos aprendidos).")
+    return SimpleNamespace(tree=tree, fb=fb, clf=clf)
+
+
 def _worker(a) -> None:
-    """Carga el modelo y procesa la cola. Todo (incluida la conexión a feedback.db) vive en este hilo."""
+    """Procesa la cola. Todo (incluida la conexión a feedback.db) vive en este hilo.
+
+    Con a.idle > 0 el modelo se carga con el primer trabajo y se libera tras a.idle minutos sin trabajos
+    (la RAM vuelve al sistema; el siguiente análisis tarda ~40 s más). Con 0 se carga al arrancar y se queda."""
+    idle = max(0.0, float(getattr(a, "idle", config.SERVICE_IDLE_MINUTES) or 0)) * 60
+    m = None
     try:
-        from .classify import Classifier
-        from .cli import _load
-        from .feedback import Feedback, Reranker
-        t0 = time.time()
-        tree, emb, idx = _load(a.model)
-        fb = Feedback()
-        clf = Classifier(tree, idx, emb, feedback=fb, reranker=Reranker.load())
+        from . import classify, feedback  # noqa: F401  (una instalación rota se ve al arrancar, no al primer clic)
+        if not idle:
+            m = _load_model(a.model)
     except Exception as e:  # noqa: BLE001
         S.error = f"{type(e).__name__}: {e}"
         print("No se pudo cargar el clasificador:", S.error)
         return
-    S.ready = True
-    print(f"Clasificador listo ({time.time() - t0:.0f} s, {fb.count()} ejemplos aprendidos).")
+    S.ready, S.loaded = True, m is not None
+    print("Clasificador listo." + (f" El modelo se carga con el primer análisis y se libera tras "
+                                   f"{idle / 60:g} min sin uso." if idle else ""))
+    last = time.time()
     while True:
-        jid, payload = S.q.get()
+        try:
+            jid, payload = S.q.get(timeout=30)
+        except queue.Empty:
+            if m is not None and idle and time.time() - last > idle:
+                m = None
+                S.loaded = False
+                gc.collect()
+                print(f"Modelo liberado tras {idle / 60:g} min sin uso.")
+            continue
         with S.lock:
             job = S.jobs.get(jid)
             if job is None:
@@ -208,14 +235,24 @@ def _worker(a) -> None:
             job["status"] = "running"
         t0 = time.time()
         try:
+            if m is None:
+                with S.lock:
+                    job["loading"] = True
+                try:
+                    m = _load_model(a.model)
+                    S.loaded = True
+                finally:
+                    with S.lock:
+                        job.pop("loading", None)
             if job["kind"] == "analyze":
-                out = {"result": _analyze(Path(payload["path"]), payload.get("name", ""), clf, jid)}
+                out = {"result": _analyze(Path(payload["path"]), payload.get("name", ""), m.clf, jid)}
             else:
-                out = {"result": _learn(payload, tree, fb, clf)}
+                out = {"result": _learn(payload, m.tree, m.fb, m.clf)}
             status = "done"
         except Exception as e:  # noqa: BLE001
             status, out = "error", {"error": f"{type(e).__name__}: {e}"}
-        secs = round(time.time() - t0, 1)
+        last = time.time()
+        secs = round(last - t0, 1)
         with S.lock:
             job.update(status=status, ended=time.time(), seconds=secs, **out)
         what = Path(payload.get("path") or payload.get("file") or "").name
@@ -239,7 +276,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            return self._send(200, {"ready": S.ready, "error": S.error, "queue": _pending()})
+            return self._send(200, {"ready": S.ready, "loaded": S.loaded, "error": S.error, "queue": _pending()})
         m = re.fullmatch(r"/jobs/([0-9a-f]{16})", self.path)
         if not m:
             return self._send(404, {"error": "not found"})
@@ -278,7 +315,7 @@ class _Handler(BaseHTTPRequestHandler):
 def serve(a) -> None:
     threading.Thread(target=_worker, args=(a,), daemon=True).start()
     httpd = ThreadingHTTPServer((a.host, a.port), _Handler)
-    print(f"Clasificador en http://{a.host}:{a.port}  (cargando el modelo...)  Ctrl+C para salir")
+    print(f"Clasificador en http://{a.host}:{a.port}  Ctrl+C para salir")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

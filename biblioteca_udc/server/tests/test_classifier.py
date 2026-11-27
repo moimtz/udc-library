@@ -99,7 +99,7 @@ def test_analyze_states_and_errors(client, fake):
     up = client.post("/api/uploads", files={"file": ("a.pdf", make_pdf("st"), "application/pdf")}).json()
     job = client.post(f"/api/uploads/{up['temp_id']}/analyze", json={}).json()["job"]
     fake["status"] = "running"
-    assert client.get(f"/api/analyze/{job}").json() == {"status": "running", "position": 0}
+    assert client.get(f"/api/analyze/{job}").json() == {"status": "running", "position": 0, "loading": False}
     fake["status"] = "error"
     assert client.get(f"/api/analyze/{job}").json()["error"] == "boom"
     assert client.get("/api/analyze/ffffffffffffffff").status_code == 404

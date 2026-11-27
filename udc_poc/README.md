@@ -202,7 +202,9 @@ y muestra los coeficientes. Es *beam search* + vecinos, no un descenso voraz: no
 **Desde la app** (`python -m udcpoc serve`, o `run_classifier.bat`; ver `udcpoc/service.py`): el servidor de la
 biblioteca pide los análisis a este servicio local, y cuando una persona guarda un ítem analizado, su UDC
 principal entra como confirmación (igual que en `review`, sin gold.csv). El análisis queda en
-`data/service_cache/<sha256>.json` para poder aprender después sin volver a leer el PDF. Para que el servicio
+`data/service_cache/<sha256>.json` para poder aprender después sin volver a leer el PDF. El modelo se carga
+con el primer análisis y se libera tras `SERVICE_IDLE_MINUTES` (15) sin uso; `serve --idle 0` lo deja cargado
+desde el arranque. Para que el servicio
 arranque con Windows (sin ventana, log en `logs/classifier.log`): `biblioteca_udc\server\install_autostart.bat`
 (ver el README de `biblioteca_udc`, «Que arranque solo con el PC»).
 

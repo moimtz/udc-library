@@ -401,7 +401,10 @@ def main():
     s = sp.add_parser("train", help="reentrena el reranker con las confirmaciones"); s.set_defaults(f=cmd_train)
     s = sp.add_parser("serve", help="servicio local para el servidor de la biblioteca (ver service.py)")
     s.add_argument("--host", default=config.SERVICE_HOST); s.add_argument("--port", type=int, default=config.SERVICE_PORT)
-    s.add_argument("--model"); s.set_defaults(f=cmd_serve)
+    s.add_argument("--model")
+    s.add_argument("--idle", type=float, default=config.SERVICE_IDLE_MINUTES,
+                   help="minutos sin uso para liberar el modelo (0 = cargarlo al arrancar y no liberarlo)")
+    s.set_defaults(f=cmd_serve)
     s = sp.add_parser("evaluate", help="métricas contra gold.csv")
     s.add_argument("results", nargs="?", default=str(config.OUTPUT_DIR / "results.json"))
     s.add_argument("--gold", default=str(config.OUTPUT_DIR / "gold.csv"))

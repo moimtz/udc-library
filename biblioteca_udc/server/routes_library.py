@@ -445,7 +445,7 @@ def analyze_result(job_id: str, user=Depends(security.require_editor), conn=Depe
         raise HTTPException(404, "This analysis is no longer available. Run it again.")
     except classifier.Unavailable as e:
         raise HTTPException(503, str(e))
-    out = {"status": j["status"], "position": j.get("position", 0)}
+    out = {"status": j["status"], "position": j.get("position", 0), "loading": bool(j.get("loading"))}
     if j["status"] == "error":
         out["error"] = j.get("error") or "unknown error"
     elif j["status"] == "done":

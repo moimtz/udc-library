@@ -24,6 +24,8 @@ RERANKER_PATH = DATA_DIR / "reranker.pkl"
 SERVICE_CACHE = DATA_DIR / "service_cache"     # `serve`: un JSON por PDF analizado (para aprender al guardar)
 SERVICE_HOST = "127.0.0.1"                     # `serve` escucha solo en este PC (el servidor está al lado)
 SERVICE_PORT = 8766
+SERVICE_IDLE_MINUTES = 15                       # `serve`: el modelo (~3-4 GB) se carga con el primer análisis y
+                                                # se libera tras estos minutos sin uso; 0 = cargar al arrancar y no liberar
 
 # ------------------------------------------------------------ embeddings
 EMBEDDING_MODEL = "BAAI/bge-m3"                # ~2.3 GB, multilingüe. Respaldo: "intfloat/multilingual-e5-small"
