@@ -5,6 +5,42 @@ import '../core/actions.dart';
 import '../core/app_state.dart';
 import '../core/models.dart';
 
+/// Names of some languages in themselves; any other code is shown as it is (e.g. "sv").
+const _langNames = {
+  'ar': 'العربية', 'ca': 'Català', 'cs': 'Čeština', 'de': 'Deutsch', 'el': 'Ελληνικά', 'en': 'English',
+  'es': 'Español', 'fi': 'Suomi', 'fr': 'Français', 'he': 'עברית', 'hr': 'Hrvatski', 'hu': 'Magyar',
+  'it': 'Italiano', 'ja': '日本語', 'ko': '한국어', 'nl': 'Nederlands', 'pl': 'Polski', 'pt': 'Português',
+  'ru': 'Русский', 'sl': 'Slovenščina', 'sv': 'Svenska', 'tr': 'Türkçe', 'uk': 'Українська', 'zh': '中文',
+};
+
+/// The languages come from the tree (whatever the server imported); a class without a name in the chosen
+/// language is shown in English.
+Widget _udcLangTile(AppState s) {
+  final langs = s.udc.labelLangs;
+  final total = s.udc.byCode.length;
+  final codes = [for (final e in langs) e.key];
+  if (!codes.contains(s.udcLang)) codes.add(s.udcLang); // a saved choice the tree no longer has
+  String pct(String l) {
+    final n = langs.where((e) => e.key == l).map((e) => e.value).firstOrNull ?? 0;
+    return total == 0 ? '' : ' (${(100 * n / total).round()}%)';
+  }
+
+  return ListTile(
+    title: const Text('Language of UDC class names'),
+    subtitle: Text(langs.length <= 1
+        ? 'The server has the class names in one language only.'
+        : 'Classes without a name in this language are shown in English.'),
+    trailing: DropdownButton<String>(
+      value: s.udcLang,
+      items: [
+        for (final l in codes)
+          DropdownMenuItem(value: l, child: Text('${_langNames[l] ?? l}${langs.length > 1 ? pct(l) : ''}')),
+      ],
+      onChanged: (v) => v == null ? null : s.setUdcLang(v),
+    ),
+  );
+}
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -53,17 +89,7 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        ListTile(
-          title: const Text('Language of UDC class names'),
-          trailing: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'en', label: Text('English')),
-              ButtonSegment(value: 'es', label: Text('Spanish')),
-            ],
-            selected: {s.udcLang},
-            onSelectionChanged: (v) => s.setUdcLang(v.first),
-          ),
-        ),
+        _udcLangTile(s),
         section('Offline files on this device'),
         ListTile(
           title: const Text('Cache size limit'),

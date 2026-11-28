@@ -609,7 +609,11 @@ class UdcIndex {
   final Map<String?, List<UdcNode>> children = {};
   final int unclassified;
 
-  UdcIndex(List<UdcNode> nodes, {this.unclassified = 0}) {
+  /// Languages of the class names in the tree, with how many classes have a name in each (most first).
+  /// The tree has every language the server imported from the RDF: nothing is hard-coded in the app.
+  final List<MapEntry<String, int>> labelLangs;
+
+  UdcIndex(List<UdcNode> nodes, {this.unclassified = 0}) : labelLangs = _countLangs(nodes) {
     final sorted = [...nodes]..sort((a, b) => a.ord.compareTo(b.ord));
     for (final n in sorted) {
       byCode[n.code] = n;
@@ -618,6 +622,16 @@ class UdcIndex {
       final p = (n.parent != null && byCode.containsKey(n.parent)) ? n.parent : null;
       children.putIfAbsent(p, () => []).add(n);
     }
+  }
+
+  static List<MapEntry<String, int>> _countLangs(List<UdcNode> nodes) {
+    final c = <String, int>{};
+    for (final n in nodes) {
+      for (final l in n.labels.keys) {
+        c[l] = (c[l] ?? 0) + 1;
+      }
+    }
+    return c.entries.toList()..sort((a, b) => b.value != a.value ? b.value - a.value : a.key.compareTo(b.key));
   }
 
   factory UdcIndex.empty() => UdcIndex([]);

@@ -23,6 +23,10 @@ udc_poc/data/service_tmp/
 biblioteca_udc/server/logs/
 udc_poc/logs/
 
+# --- UDC tree: downloads from UDC Online and intermediate files of the fusion (the RDF keeps their content) ---
+udc_tree_download/snapshots/
+udc_to_rdf_conversion/generated/
+
 # --- Tesseract models (tessdata_fast clone, ~600 MB) ---
 udc_poc/data/tessdata/
 

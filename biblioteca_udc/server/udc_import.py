@@ -1,6 +1,6 @@
 """Import the UDC tree (SKOS RDF/XML) into the database.
 
-    python udc_import.py path\\to\\udcs-skos.rdf [--langs en,es]
+    python udc_import.py path\\to\\udcs-skos.rdf [--langs all | en,es]   (default: every language)
 
 Meant for the RDF produced by udc_to_rdf_conversion/udc_merge.py (full tree, sibling order,
 headings, informative nodes and class notes). The original UDC Summary file also works:
@@ -48,8 +48,8 @@ def split_example(text: str) -> dict:
     return {"code": code.strip(), "label": label.strip()} if sep else {"code": "", "label": text.strip()}
 
 
-def read_rdf(path: Path, langs: list[str]) -> dict[str, dict]:
-    """uri -> concept dict. Reads skos:Concept and rdf:Description elements."""
+def read_rdf(path: Path, langs: list[str] | None) -> dict[str, dict]:
+    """uri -> concept dict. Reads skos:Concept and rdf:Description elements. langs=None: every language."""
     root = ET.parse(path).getroot()
     concepts: dict[str, dict] = {}
     for el in root:
@@ -69,7 +69,7 @@ def read_rdf(path: Path, langs: list[str]) -> dict[str, dict]:
             if tag == f"{{{SKOS}}}notation":
                 c["notation"] = text
             elif tag == f"{{{SKOS}}}prefLabel":
-                if lang in langs and text:
+                if (langs is None or lang in langs) and text:
                     c["labels"].setdefault(lang, text)
             elif tag == f"{{{SKOS}}}broader" and res:
                 c["broader"].append(res)
@@ -79,11 +79,11 @@ def read_rdf(path: Path, langs: list[str]) -> dict[str, dict]:
                 c["order"] = int(text)
             elif tag == f"{{{UDCX}}}nodeType" and text:
                 c["type"] = text
-            elif tag in NOTE_TAGS and text and lang in langs:
+            elif tag in NOTE_TAGS and text and (langs is None or lang in langs):
                 lst = c["notes"].setdefault(NOTE_TAGS[tag], {}).setdefault(lang, [])
                 if text not in lst:
                     lst.append(text)
-            elif tag == f"{{{SKOS}}}example" and text and lang in langs:
+            elif tag == f"{{{SKOS}}}example" and text and (langs is None or lang in langs):
                 c["examples"].setdefault(lang, []).append(split_example(text))
     return concepts
 
@@ -129,9 +129,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("file", type=Path, nargs="?", default=Path(__file__).resolve().parent / "udc_data" / "udcs-skos.rdf",
                     help="RDF de la UDC (por defecto udc_data/udcs-skos.rdf, el que escribe udc_main_tree_fusion.py)")
-    ap.add_argument("--langs", default="en,es", help="comma-separated language codes to keep")
+    ap.add_argument("--langs", default="all",
+                    help="languages to keep: 'all' (default: every language in the RDF) or codes, e.g. en,es")
     args = ap.parse_args()
-    langs = [x.strip() for x in args.langs.split(",") if x.strip()]
+    langs = None if args.langs.strip().lower() == "all" else [x.strip() for x in args.langs.split(",") if x.strip()]
 
     concepts = read_rdf(args.file, langs)
     codes = {uri: code_of(uri, c) for uri, c in concepts.items() if c["concept"]}
@@ -199,7 +200,12 @@ def main() -> None:
     conn.close()
     with_notes = sum(1 for n in nodes.values() if n["notes"])
     info = sum(1 for n in nodes.values() if n["type"] == "info")
-    print(f"Imported {len(ordered)} UDC classes ({', '.join(langs)}); {with_notes} with notes, {info} informative; "
+    count: dict[str, int] = {}
+    for code in ordered:
+        for lg in nodes[code]["labels"]:
+            count[lg] = count.get(lg, 0) + 1
+    shown = ", ".join(f"{lg} {n}" for lg, n in sorted(count.items(), key=lambda x: (-x[1], x[0])))
+    print(f"Imported {len(ordered)} UDC classes (labels: {shown}); {with_notes} with notes, {info} informative; "
           f"{len(cancelled)} cancelled classes; {removed} classes no longer in the tree were removed. "
           "Existing items were re-linked to the tree.")
     if len(ordered) < len(nodes):

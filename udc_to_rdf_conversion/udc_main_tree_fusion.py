@@ -19,7 +19,8 @@ Salidas: el RDF en biblioteca_udc/server/udc_data/ (lo leen el servidor y el PoC
 informes, en udc_to_rdf_conversion/generated/ (intermedios: el RDF ya contiene su información).
   5. fusion_report.txt: resumen, añadidas, no añadidas y avisos (más los informes de cada paso).
 
-Idioma: --lang es para una descarga hecha con la interfaz en español. Entonces el árbol solo aporta etiquetas @es
+Idioma: se detecta en el snapshot (subdominio del sitio, p. ej. es.udc-hub.com, o nombres de los campos); --lang
+lo fija a mano y, si no coincide con el detectado, la fusión se detiene. Con una descarga en español el árbol solo aporta etiquetas @es
 (no cambia la jerarquía), las notas van como @es, no se tocan las canceladas y los archivos llevan sufijo
 (UDC_hierarchy_es.txt, udc_records_es.json...), para no pisar los de inglés.
 
@@ -241,6 +242,39 @@ def place_missing(nodes, roots, candidates, decisions, rep, pages):
             rep["unplaced"].append((nt, parents[nt][1]))
 
 
+# ---------------------------------------------------------------- idioma
+EN_UI = {"scopenote": "Scope Note", "examples": "Examples", "including": "Including"}
+
+
+def snapshot_lang(snap: dict) -> str | None:
+    """Idioma de la interfaz con que se hizo la descarga. Lo dice el subdominio del sitio (es.udc-hub.com) o, si
+    no lo hay, los nombres de los campos (ui). No se usa snap["lang"]: es el <html lang> de la página, y el sitio
+    en español también declara "en"."""
+    ui = snap.get("ui") or {}
+    if ui and all(ui.get(k, "").rstrip(": ").strip() == v for k, v in EN_UI.items() if k in ui):
+        return "en"
+    host = str(snap.get("site") or "").lower().split(":")[0]
+    first = host.split(".")[0] if host.count(".") >= 2 else ""
+    if len(first) in (2, 3) and first.isalpha() and first != "www":
+        return first
+    return None
+
+
+def choose_lang(snap: dict, given: str | None, ignore_site: bool) -> str:
+    """Una descarga en español fusionada como inglés cambiaría la jerarquía y las etiquetas inglesas: el idioma se
+    toma del snapshot y un --lang que no coincide detiene la fusión."""
+    found = snapshot_lang(snap)
+    if given is None:
+        lang = found or "en"
+        print(f"Idioma de la descarga: {lang}" + (" (detectado en el snapshot)" if found else
+                                                  " (no se pudo detectar; usa --lang si no es inglés)"))
+        return lang
+    if found and given != found and not ignore_site:
+        sys.exit(f"El snapshot es de {snap.get('site')} (idioma «{found}»), pero se pidió --lang {given}. "
+                 f"Quita --lang, o añade --ignore-site-lang si estás seguro.")
+    return given
+
+
 # ---------------------------------------------------------------- fusión
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -252,22 +286,23 @@ def main(argv=None):
                     help="dónde escribir UDC_hierarchy.txt, udc_records.json, udc_cancelled.json e informes")
     ap.add_argument("--decisions", type=Path, default=HERE / "tree_decisions.json",
                     help="excepciones a la colocación automática")
-    ap.add_argument("--lang", default="en", help="idioma de la interfaz en la descarga (por defecto en)")
+    ap.add_argument("--lang", help="idioma de la interfaz en la descarga (por defecto, el que se detecta en el snapshot)")
+    ap.add_argument("--ignore-site-lang", action="store_true",
+                    help="usar --lang aunque no coincida con el idioma detectado en el snapshot")
     ap.add_argument("--prune", action="store_true", help="borra del RDF las clases que ya no están en el sitio")
     ap.add_argument("--dry-run", action="store_true", help="todo menos escribir el RDF")
     args = ap.parse_args(argv)
     work = args.workdir
     work.mkdir(parents=True, exist_ok=True)
-    lang = args.lang
-    sfx = "" if lang == "en" else f"_{lang}"   # salidas de otro idioma, aparte
-    if lang != "en" and args.prune:
-        sys.exit("--prune solo tiene sentido con la descarga en inglés (la que define la jerarquía).")
-
     print(f"Leyendo {args.snapshot} …")
     with gzip.open(args.snapshot, "rt", encoding="utf-8") as fh:
         snap = json.load(fh)
     if not str(snap.get("format", "")).startswith("udc-snapshot/"):
         sys.exit("No es un snapshot de udc_tree_download.js (falta 'format').")
+    lang = choose_lang(snap, args.lang, args.ignore_site_lang)
+    sfx = "" if lang == "en" else f"_{lang}"   # salidas de otro idioma, aparte
+    if lang != "en" and args.prune:
+        sys.exit("--prune solo tiene sentido con la descarga en inglés (la que define la jerarquía).")
     stats = snap.get("stats", {})
     rep = {"tree_problems": [], "tree_duplicates": [], "added": [], "unplaced": [], "excluded": []}
     if stats.get("partial"):

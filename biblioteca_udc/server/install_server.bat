@@ -11,7 +11,7 @@ echo Now create the administrator account:
 .venv\Scripts\python.exe create_admin.py || goto :error
 echo.
 echo Importing the UDC tree (about a minute)...
-.venv\Scripts\python.exe udc_import.py --langs en,es || goto :error
+.venv\Scripts\python.exe udc_import.py || goto :error
 echo.
 echo Done. Start the server with run_server.bat
 pause

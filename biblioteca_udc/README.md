@@ -103,10 +103,11 @@ Sin este paso la app funciona solo con las 10 clases principales (0 a 9).
 1. El RDF está en `server/udc_data/udcs-skos.rdf`: ahí lo escribe la fusión del árbol (`udc_to_rdf_conversion/udc_main_tree_fusion.py`, ver el README de esa carpeta), así que no hay que copiarlo.
 2. En la carpeta `server` (si usas otra carpeta de datos, define antes `set BUDC_DATA_DIR=...`):
    ```
-   .venv\Scripts\python.exe udc_import.py --langs en,es
+   .venv\Scripts\python.exe udc_import.py
    ```
-   Sin ruta usa `udc_data/udcs-skos.rdf` (se puede pasar otra). Tarda unos segundos. Reemplaza el árbol completo y vuelve a enlazar los libros existentes con sus clases. Repítelo después de cada fusión (por ejemplo, tras una descarga nueva o un idioma).
-3. Reinicia el servidor. En la app, Settings > "Language of UDC class names" cambia entre inglés y español (si falta el idioma, se muestra en inglés).
+   Sin ruta usa `udc_data/udcs-skos.rdf` (se puede pasar otra) y toma **todos los idiomas** que tenga el RDF
+   (`--langs en,es` para limitarlos). Tarda unos 20 segundos. Reemplaza el árbol completo y vuelve a enlazar los libros existentes con sus clases. Repítelo después de cada fusión (por ejemplo, tras una descarga nueva o un idioma).
+3. Reinicia el servidor. En la app, Settings > "Language of UDC class names" lista los idiomas que trae el árbol, con el porcentaje de clases que tienen nombre en cada uno (lo que falta se muestra en inglés). La lista sale de los datos, así que un idioma nuevo en el RDF aparece solo, sin recompilar la app.
 
 Qué guarda por clase (tabla `udc_nodes`): notación, padre, etiquetas, orden global (recorrido en profundidad respetando `udcx:order`), tipo (`heading` = encabezado sin notación, como MAIN TABLES; `info` = nodo informativo no asignable, como INFORMATION ON SPECIAL AUXILIARY TABLES) y `notes` (JSON con `scope`, `app`, `info`, `including` y `examples` por idioma, y `related`). Las bases creadas antes reciben las columnas nuevas solas al arrancar el servidor. Las clases **canceladas** del RDF (`udcx:CancelledClass`) van a la tabla `udc_cancelled` (notación, año, E&C, etiqueta antigua, «Including», reemplazos en JSON, nota); no forman parte del árbol.
 

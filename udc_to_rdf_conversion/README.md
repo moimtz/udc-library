@@ -58,9 +58,11 @@ snapshot. La descarga está en `../udc_tree_download/udc_tree_download.js` y los
    ```
    Guarda el RDF anterior en `udcs-skos.rdf.bak`, escribe las salidas intermedias en `generated/` y el RDF nuevo en
    `server/udc_data/` (aplica `extra_notes.json` al final). Opciones: `--dry-run` (escribe árbol, JSON e informes, no el RDF ni el respaldo),
-   `--lang xx`, `--prune` (borra del RDF lo que ya no está en el sitio; solo con un snapshot completo en inglés),
+   `--lang xx` (por defecto, el detectado en el snapshot; ver «Otro idioma»), `--prune` (borra del RDF lo que ya no está en el sitio; solo con un snapshot completo en inglés),
    `--rdf`, `--workdir`, `--backup`, `--decisions`.
-3. **Después**: reimportar en el servidor (`python udc_import.py`, ya sin ruta) y reconstruir el índice del PoC.
+3. **Después**: reimportar en el servidor (`python udc_import.py`, ya sin ruta). El índice del PoC solo se reconstruye
+   si cambió el texto en inglés (`python -m udcpoc index` lo comprueba solo y no hace nada si no hace falta); una
+   descarga en otro idioma no lo cambia.
 
 **Respaldo (`udcs-skos.rdf.bak`).** Cada fusión real (sin `--dry-run`) copia el RDF del servidor a
 `udc_to_rdf_conversion/udcs-skos.rdf.bak` justo antes de escribirlo, y fusiona leyendo esa copia. Así el respaldo es
@@ -70,10 +72,14 @@ inglés y luego español) dejan como respaldo el estado intermedio; para conserv
 nombre antes. Para volver más atrás, el historial de git.
 
 **Otro idioma.** El mismo script sirve con la interfaz en cualquier idioma: reconoce filas, páginas, recuentos,
-iconos (`incl_square.png`) y símbolos (`◇`, `⇨`) por la estructura del HTML, no por su texto. Luego:
+iconos (`incl_square.png`) y símbolos (`◇`, `⇨`) por la estructura del HTML, no por su texto. **El idioma se detecta
+solo** en el snapshot: por el subdominio del sitio (`es.udc-hub.com` → `es`) o por los nombres de los campos (`ui`).
+No se usa el campo `lang` del snapshot: es el `<html lang>` de la página, y el sitio en español también dice `en`.
+`--lang xx` lo fija a mano; si no coincide con el detectado, la fusión se detiene (`--ignore-site-lang` para forzarlo),
+porque una descarga en español fusionada como inglés cambiaría la jerarquía y las etiquetas inglesas. Luego:
 ```
-python udc_main_tree_fusion.py <snapshot> --lang es --dry-run     (revisar informes)
-python udc_main_tree_fusion.py <snapshot> --lang es
+python udc_main_tree_fusion.py <snapshot> --dry-run     (revisar informes; la primera línea dice el idioma)
+python udc_main_tree_fusion.py <snapshot>
 ```
 - El árbol solo aporta etiquetas `@es`: la jerarquía la define la descarga en inglés. Las notas de las fichas entran
   como `@es`; las canceladas no se tocan (guardan una sola etiqueta, la inglesa).
@@ -99,8 +105,13 @@ Criterio general: si el sitio se contradice, decide la notación.
 
 **Probado** (noviembre de 2026) con un snapshot armado con la descarga anterior (árbol original del sitio, fichas y
 búsqueda): la fusión colocó sola las 56 clases que antes se añadieron a mano y reprodujo el árbol byte a byte y el
-RDF idéntico (salvo la fecha); también corre con `--lang es`. El script del navegador está verificado en sintaxis;
-la primera descarga real es su prueba (si algo falla, lo descargado queda guardado y se puede exportar).
+RDF idéntico (salvo la fecha); también corre con `--lang es`.
+
+**Primera descarga real** (27-28 de noviembre de 2026, `es.udc-hub.com`, `udc_snapshot_2026-11-28.json.gz`, sin
+errores): 71 764 nodos del árbol, 785 fichas, 13 514 páginas de búsqueda. Fusión con idioma detectado `es` (~1,7 min):
+71 867 etiquetas `@es` (ninguna clase sin etiqueta), 45 445 clases con notas, 103 clases colocadas por notación,
+0 notas sin reconocer. 17 clases que el sitio en español cuelga de otro padre no se movieron (la jerarquía la define
+la descarga en inglés). El índice del PoC no cambió (usa el texto en inglés).
 
 ## Formato del `.txt`
 
