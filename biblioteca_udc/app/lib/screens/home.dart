@@ -1,57 +1,125 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/actions.dart';
 import '../core/app_state.dart';
+import '../core/i18n.dart';
+import '../core/theme.dart';
+import '../widgets/compact_dropdown.dart';
 import '../widgets/item_tile.dart';
+import '../widgets/search_panel.dart';
 import '../widgets/udc_tree_view.dart';
 import 'admin.dart';
 import 'item_form.dart';
 import 'settings.dart';
 import 'trash.dart';
-import 'udc_picker.dart';
 
+/// Main screen.
+///  - Wide (laptop, tablet in landscape): search panel + UDC tree on the left, results on the right. The left
+///    pane starts as wide as the search panel (from "UDC number" to "Search", same margin on both sides);
+///    drag the divider to change it, double-click it to go back.
+///  - Narrow (phone): search panel + tree; "Search" slides the results in from the right (back = return).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
+    final wide = MediaQuery.sizeOf(context).width >= kWideLayout;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Biblioteca UDC'),
+        title: Text(tr('UDC Library')),
+        toolbarHeight: 46,
         actions: [
           if (s.offline)
             TextButton.icon(
               onPressed: s.reconnect,
               icon: const Icon(Icons.cloud_off, size: 18),
-              label: const Text('Offline - reconnect'),
+              label: Text(tr('Offline - reconnect')),
             ),
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: tr('Refresh'),
             icon: const Icon(Icons.refresh),
             onPressed: s.offline ? s.reconnect : s.refreshAfterChange,
           ),
         ],
       ),
-      drawer: SideMenu(parentContext: context),
-      body: LayoutBuilder(builder: (context, c) {
-        final landscape = c.maxWidth >= c.maxHeight;
-        const left = _LeftPane();
-        const right = _RightPane();
-        if (landscape) {
-          return Row(children: [
-            SizedBox(width: (c.maxWidth * 0.36).clamp(330.0, 520.0).toDouble(), child: left),
-            const VerticalDivider(width: 1),
-            const Expanded(child: right),
-          ]);
-        }
-        return const Column(children: [
-          Expanded(flex: 4, child: left),
-          Divider(height: 1),
-          Expanded(flex: 6, child: right),
-        ]);
-      }),
+      drawer: SideMenu(parentContext: context, wide: wide),
+      body: wide ? const _WideBody() : _TreePane(onSearched: () => openResultsPage(context)),
+    );
+  }
+}
+
+/// Phone: the results as a page that slides in from the right.
+void openResultsPage(BuildContext context) {
+  if (MediaQuery.sizeOf(context).width >= kWideLayout) return;
+  Navigator.of(context).push(PageRouteBuilder(
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (_, __, ___) => const _ResultsPage(),
+    transitionsBuilder: (_, anim, __, child) => SlideTransition(
+      position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+          .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+      child: child,
+    ),
+  ));
+}
+
+class _ResultsPage extends StatelessWidget {
+  const _ResultsPage();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(tr('Results')), toolbarHeight: 46),
+        body: const _ResultsPane(),
+      );
+}
+
+class _WideBody extends StatelessWidget {
+  const _WideBody();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    return LayoutBuilder(builder: (context, c) {
+      final natural = SearchPanel.naturalWidth(context);
+      double fit(double w) => w.clamp(c.maxWidth * kTreeMin, c.maxWidth * kTreeMax).toDouble();
+      final treeW = fit(s.treeWidth ?? natural);
+      return Row(children: [
+        SizedBox(width: treeW, child: const _TreePane(withSearch: true)),
+        _DragDivider(
+          onDrag: (dx) => s.previewTreeWidth(fit(treeW + dx)),
+          onEnd: () => s.setTreeWidth(s.treeWidth),
+          onReset: () => s.setTreeWidth(null),
+        ),
+        const Expanded(child: _ResultsPane()),
+      ]);
+    });
+  }
+}
+
+/// The vertical line between tree and results; drag it to change their widths.
+class _DragDivider extends StatelessWidget {
+  final ValueChanged<double> onDrag;
+  final VoidCallback onEnd;
+  final VoidCallback onReset; // double click: back to the width of the search panel
+  const _DragDivider({required this.onDrag, required this.onEnd, required this.onReset});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+        onHorizontalDragEnd: (_) => onEnd(),
+        onDoubleTap: onReset,
+        child: SizedBox(
+          width: 7,
+          child: Center(child: Container(width: 1, color: cs.outlineVariant)),
+        ),
+      ),
     );
   }
 }
@@ -59,7 +127,8 @@ class HomeScreen extends StatelessWidget {
 // ---------------------------------------------------------------------- side menu
 class SideMenu extends StatelessWidget {
   final BuildContext parentContext;
-  const SideMenu({super.key, required this.parentContext});
+  final bool wide;
+  const SideMenu({super.key, required this.parentContext, required this.wide});
 
   @override
   Widget build(BuildContext context) {
@@ -77,66 +146,72 @@ class SideMenu extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Biblioteca UDC', style: Theme.of(context).textTheme.titleLarge),
+              Text(tr('UDC Library'), style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 2),
-              Text('${s.user?.username ?? ''}  (${s.user?.role ?? ''})', style: TextStyle(color: cs.onSurfaceVariant)),
+              Text('${s.user?.username ?? ''}  (${tr(s.user?.role ?? '')})', style: TextStyle(color: cs.onSurfaceVariant)),
             ]),
           ),
           if (s.user?.canEdit ?? false)
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
-              title: const Text('Add files'),
+              title: Text(tr('Add files')),
               enabled: !s.offline,
               onTap: () => go(() => addFilesFlow(parentContext)),
             ),
           ListTile(
             leading: const Icon(Icons.library_books_outlined),
-            title: const Text('Library'),
-            onTap: () => go(() => s.offline ? s.reconnect() : s.selectNode(null)),
+            title: Text(tr('Library')),
+            onTap: () => go(() {
+              s.offline ? s.reconnect() : s.showLibrary();
+              openResultsPage(parentContext);
+            }),
           ),
           ListTile(
             leading: const Icon(Icons.download_done),
-            title: const Text('Saved on this device'),
-            subtitle: Text('${s.cache.entries.length} files'),
-            onTap: () => go(s.showDownloaded),
+            title: Text(tr('Saved on this device')),
+            subtitle: Text(tr('{n} files', {'n': s.cache.entries.length})),
+            onTap: () => go(() {
+              s.showDownloaded();
+              openResultsPage(parentContext);
+            }),
           ),
           if (s.user?.canEdit ?? false)
             ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('Trash'),
+              title: Text(tr('Trash')),
               enabled: !s.offline,
               onTap: () => go(() => Navigator.push(parentContext, MaterialPageRoute(builder: (_) => const TrashScreen()))),
             ),
           if (s.user?.isAdmin ?? false)
             ListTile(
               leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('Users'),
+              title: Text(tr('Users')),
               enabled: !s.offline,
               onTap: () => go(() => Navigator.push(parentContext, MaterialPageRoute(builder: (_) => const AdminScreen()))),
             ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
+            title: Text(tr('Settings')),
             onTap: () => go(() => Navigator.push(parentContext, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('About'),
+            title: Text(tr('About')),
             onTap: () => go(() => showAboutDialog(
                   context: parentContext,
-                  applicationName: 'Biblioteca UDC',
-                  applicationVersion: '1.0.0',
-                  children: const [
-                    Text('Multilingual Universal Decimal Classification Summary (UDCC Publication No. 088).\n'
+                  applicationName: tr('UDC Library'),
+                  applicationVersion: '0.2.0',
+                  children: [
+                    Text(tr('Multilingual Universal Decimal Classification Summary (UDCC Publication No. 088). '
                         'Copyright: UDC Consortium, 2013. Released for use and distribution under the '
-                        'Creative Commons Attribution Share Alike 3.0 license.'),
+                        'Creative Commons Attribution Share Alike 3.0 license.')),
                   ],
                 )),
           ),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text('Sign out'),
+            title: Text(tr('Sign out')),
             onTap: () => go(s.logout),
           ),
         ]),
@@ -145,217 +220,87 @@ class SideMenu extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------- left pane
-class _LeftPane extends StatelessWidget {
-  const _LeftPane();
+// ---------------------------------------------------------------------- tree pane
+/// Search panel on top and the UDC tree below. [onSearched] (phone) = slide to the results.
+class _TreePane extends StatelessWidget {
+  final VoidCallback? onSearched;
+  final bool withSearch;
+  const _TreePane({this.onSearched, this.withSearch = true});
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
-
-    final fieldItems = <DropdownMenuItem<String>>[
-      const DropdownMenuItem(value: 'all', child: Text('All fields')),
-      const DropdownMenuItem(value: 'title', child: Text('Title')),
-      const DropdownMenuItem(value: 'creators', child: Text('Creators')),
-      const DropdownMenuItem(value: 'year', child: Text('Year')),
-      const DropdownMenuItem(value: 'type', child: Text('Item type')),
-      const DropdownMenuItem(value: 'udc', child: Text('UDC')),
-      const DropdownMenuItem(value: 'tags', child: Text('Tags')),
-      const DropdownMenuItem(value: 'citekey', child: Text('Citation key')),
-      // Zotero fields; a base field also searches its variants (Publisher finds University, Institution...)
-      for (final (code, label) in s.schema.searchFields)
-        if (code != 'title') DropdownMenuItem(value: code, child: Text(label)),
-    ];
-    final fieldValue = fieldItems.any((d) => d.value == s.field) ? s.field : 'all';
-
+    final faint = cs.onSurfaceVariant.withValues(alpha: 0.6);
     return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: s.searchController,
-              onSubmitted: (_) => s.submitSearch(),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search the library',
-                isDense: true,
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                errorText: s.searchError,
-                errorMaxLines: 2,
-                suffixIcon: IconButton(
-                  tooltip: 'Clear',
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    s.searchController.clear();
-                    s.submitSearch();
-                  },
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Filters',
-            icon: Badge(isLabelVisible: s.hasActiveFilters, child: const Icon(Icons.tune)),
-            onPressed: () => showFilterDialog(context),
-          ),
-        ]),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Row(children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [
-                _opt(context, 'Aa', 'Match case', s.caseSensitive, (v) => s.setSearchOption(caseSensitive: v)),
-                _opt(context, 'Word', 'Whole word', s.whole, (v) => s.setSearchOption(whole: v)),
-                _opt(context, '.*', 'Regular expression', s.regex, (v) => s.setSearchOption(regex: v)),
-                const SizedBox(width: 6),
-                DropdownButton<String>(
-                  value: fieldValue,
-                  underline: const SizedBox.shrink(),
-                  isDense: true,
-                  items: fieldItems,
-                  onChanged: (v) => s.setSearchOption(field: v),
-                ),
-              ]),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Collapse all',
-            icon: const Icon(Icons.unfold_less),
-            onPressed: s.collapseAll,
-          ),
-          IconButton(
-            tooltip: 'Expand all',
-            icon: const Icon(Icons.unfold_more),
-            onPressed: s.expandAll,
-          ),
-        ]),
-      ),
-      if (s.udcScope != null || s.hasActiveFilters)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(spacing: 6, runSpacing: 0, children: [
-              if (s.udcScope != null)
-                InputChip(
-                  visualDensity: VisualDensity.compact,
-                  label: Text(s.udcScope == 'none'
-                      ? 'Unclassified'
-                      : 'UDC ${s.udcScope}${s.udc.byCode[s.udcScope] == null ? '' : ' ${s.udc.byCode[s.udcScope]!.label(s.udcLang)}'}',
-                      overflow: TextOverflow.ellipsis),
-                  onDeleted: s.clearScope,
-                ),
-              if (s.typeFilter != null)
-                InputChip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text(s.typeLabel(s.typeFilter!)),
-                    onDeleted: () => s.applyFilters(
-                        yearFrom: s.yearFrom, yearTo: s.yearTo, language: s.languageFilter, scope: s.udcScope)),
-              if (s.yearFrom != null || s.yearTo != null)
-                InputChip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text('Year ${s.yearFrom ?? ''}-${s.yearTo ?? ''}'),
-                    onDeleted: () => s.applyFilters(type: s.typeFilter, language: s.languageFilter, scope: s.udcScope)),
-              if (s.languageFilter != null)
-                InputChip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text('Language ${s.languageFilter}'),
-                    onDeleted: () => s.applyFilters(
-                        type: s.typeFilter, yearFrom: s.yearFrom, yearTo: s.yearTo, scope: s.udcScope)),
-            ]),
-          ),
-        ),
-      const Divider(height: 1),
+      if (withSearch) SearchPanel(onSearched: onSearched),
+      PaneHeader(icon: Icons.account_tree_outlined, title: tr('UDC tree'), actions: [
+        SmallIconButton(icon: Icons.unfold_less, tooltip: tr('Collapse all'), color: faint, onPressed: s.collapseAll),
+      ]),
       Expanded(
         child: Container(
           color: cs.surfaceContainerLowest,
           child: UdcTreeView(
             index: s.udc,
             expanded: s.expanded,
-            selected: s.udcScope,
+            selected: s.treeSelection,
             lang: s.udcLang,
-            onSelect: s.selectNode,
+            onSelect: (code) {
+              s.selectNode(code);
+              onSearched?.call();
+            },
             onToggle: s.toggleExpanded,
           ),
         ),
       ),
     ]);
   }
-
-  Widget _opt(BuildContext context, String label, String tip, bool on, ValueChanged<bool> cb) => Padding(
-        padding: const EdgeInsets.only(right: 4),
-        child: FilterChip(
-          label: Text(label),
-          tooltip: tip,
-          selected: on,
-          visualDensity: VisualDensity.compact,
-          onSelected: cb,
-        ),
-      );
 }
 
-// ---------------------------------------------------------------------- right pane
-class _RightPane extends StatelessWidget {
-  const _RightPane();
+// ---------------------------------------------------------------------- results pane
+class _ResultsPane extends StatelessWidget {
+  const _ResultsPane();
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final heading = s.downloadedMode
-        ? 'Saved on this device: ${s.total}'
-        : (s.loading ? 'Searching...' : '${s.total} ${s.total == 1 ? 'result' : 'results'}');
+        ? tr('Saved on this device: {n}', {'n': s.total})
+        : (s.loading ? tr('Searching...') : tr(s.total == 1 ? '{n} result' : '{n} results', {'n': s.total}));
+    final n = s.selectedIds.length;
+    final all = s.results.isNotEmpty && n == s.results.length;
 
     return Column(children: [
       if (s.offline)
         Container(
           width: double.infinity,
           color: cs.tertiaryContainer,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text('The server is unreachable. Showing files saved on this device.',
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Text(tr('The server is unreachable. Showing files saved on this device.'),
               style: TextStyle(color: cs.onTertiaryContainer)),
         ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(14, 6, 6, 0),
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
         child: Row(children: [
-          Expanded(child: Text(heading, style: Theme.of(context).textTheme.titleSmall)),
-          if (s.udcScope != null && s.udcScope != 'none' && !s.downloadedMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: FilterChip(
-                label: const Text('Include subclasses'),
-                visualDensity: VisualDensity.compact,
-                selected: s.includeDesc,
-                onSelected: s.setIncludeDesc,
-              ),
+          Tooltip(
+            message: all ? tr('Select none') : tr('Select all'),
+            child: SmallCheckbox(
+              value: n == 0 ? false : (all ? true : null),
+              tristate: true,
+              onChanged: s.results.isEmpty ? null : (_) => s.selectAll(!all),
             ),
-          if (!s.downloadedMode) ...[
-            DropdownButton<String>(
-              value: s.sort,
-              underline: const SizedBox.shrink(),
-              isDense: true,
-              items: const [
-                DropdownMenuItem(value: 'title', child: Text('Title')),
-                DropdownMenuItem(value: 'author', child: Text('Author')),
-                DropdownMenuItem(value: 'year', child: Text('Year')),
-                DropdownMenuItem(value: 'added', child: Text('Date added')),
-              ],
-              onChanged: (v) => s.setSort(v ?? 'title', s.ascending),
-            ),
-            IconButton(
-              tooltip: s.ascending ? 'Ascending' : 'Descending',
-              icon: Icon(s.ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 20),
-              onPressed: () => s.setSort(s.sort, !s.ascending),
-            ),
-          ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(n > 0 ? tr('{n} selected', {'n': n}) : heading,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleSmall),
+          ),
+          // shrinks (with ...) when the results pane is narrow
+          if (!s.downloadedMode) const Flexible(child: _SortSelector()),
         ]),
       ),
+      if (n > 0) const _SelectionBar(),
       if (s.loading) const LinearProgressIndicator(minHeight: 2) else const SizedBox(height: 2),
       Expanded(child: _results(context, s)),
     ]);
@@ -370,24 +315,24 @@ class _RightPane extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(s.error!, textAlign: TextAlign.center, style: TextStyle(color: cs.error)),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: s.runQuery, child: const Text('Try again')),
+            OutlinedButton(onPressed: s.runQuery, child: Text(tr('Try again'))),
           ]),
         ),
       );
     }
     if (s.results.isEmpty && !s.loading) {
-      final empty = s.searchController.text.trim().isEmpty && s.udcScope == null && !s.hasActiveFilters;
+      final empty = s.searchController.text.trim().isEmpty && s.udcController.text.trim().isEmpty && !s.unclassified;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
             s.downloadedMode
-                ? 'Nothing is saved on this device yet. Open a file or choose "Keep offline".'
+                ? tr('Nothing is saved on this device yet. Open a file or choose "Keep offline".')
                 : empty
                     ? (s.user?.canEdit ?? false
-                        ? 'The library is empty. Open the menu and choose "Add files".'
-                        : 'The library is empty.')
-                    : 'No results. Change the search, or clear the filters and the selected class.',
+                        ? tr('The library is empty. Open the menu and choose "Add files".')
+                        : tr('The library is empty.'))
+                    : tr('No results. Change the search or tick fewer options.'),
             textAlign: TextAlign.center,
             style: TextStyle(color: cs.onSurfaceVariant),
           ),
@@ -395,120 +340,87 @@ class _RightPane extends StatelessWidget {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 24, top: 4),
+      padding: const EdgeInsets.only(bottom: 16, top: 2),
       itemCount: s.results.length,
       itemBuilder: (_, i) => ItemTile(key: ValueKey(s.results[i].id), item: s.results[i]),
     );
   }
 }
 
-// ---------------------------------------------------------------------- filters
-Future<void> showFilterDialog(BuildContext context) async {
-  final s = context.read<AppState>();
-  var type = s.typeFilter;
-  var scope = s.udcScope;
-  final from = TextEditingController(text: s.yearFrom?.toString() ?? '');
-  final to = TextEditingController(text: s.yearTo?.toString() ?? '');
-  final lang = TextEditingController(text: s.languageFilter ?? '');
+/// Order of the results, in a frame: [Title v] [up/down].
+class _SortSelector extends StatelessWidget {
+  const _SortSelector();
 
-  await showDialog<void>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) {
-      return AlertDialog(
-        title: const Text('Filters'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              DropdownButtonFormField<String?>(
-                value: type,
-                decoration: const InputDecoration(labelText: 'Item type', border: OutlineInputBorder()),
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Any')),
-                  for (final t in s.schema.enabledTypes) DropdownMenuItem<String?>(value: t.code, child: Text(t.label)),
-                ],
-                onChanged: (v) => setLocal(() => type = v),
-              ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: from,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
-                    decoration: const InputDecoration(labelText: 'Year from', border: OutlineInputBorder()),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: to,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
-                    decoration: const InputDecoration(labelText: 'Year to', border: OutlineInputBorder()),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 12),
-              TextField(
-                controller: lang,
-                decoration: const InputDecoration(labelText: 'Language code', hintText: 'es', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              Text('UDC class', style: Theme.of(ctx).textTheme.titleSmall),
-              const SizedBox(height: 6),
-              Row(children: [
-                Expanded(
-                  child: Text(
-                    scope == null
-                        ? 'Whole library'
-                        : scope == 'none'
-                            ? 'Unclassified'
-                            : '$scope ${s.udc.byCode[scope]?.label(s.udcLang) ?? ''}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.account_tree_outlined, size: 18),
-                  label: const Text('Choose'),
-                  onPressed: () async {
-                    final code = await pickUdc(ctx, initial: scope);
-                    if (code != null) setLocal(() => scope = code);
-                  },
-                ),
-                if (scope != null)
-                  IconButton(tooltip: 'Clear', icon: const Icon(Icons.clear), onPressed: () => setLocal(() => scope = null)),
-              ]),
-            ]),
-          ),
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    return Framed(
+      padding: const EdgeInsets.only(left: 10, right: 2),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Flexible(
+          child: Text('${tr('Sort')}:',
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              softWrap: false,
+              style: TextStyle(fontSize: kFsSmall, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              s.applyFilters(scope: s.udcScope);
-            },
-            child: const Text('Reset'),
+        const SizedBox(width: 4),
+        Flexible(
+            child: CompactDropdown<String>(
+          value: s.sort,
+          options: [
+            Opt('title', tr('Title')),
+            Opt('author', tr('Author')),
+            Opt('year', tr('Year')),
+            Opt('added', tr('Date added')),
+          ],
+          onChanged: (v) => s.setSort(v, s.ascending),
+        )),
+        SmallIconButton(
+          tooltip: s.ascending ? tr('Ascending') : tr('Descending'),
+          icon: s.ascending ? Icons.arrow_upward : Icons.arrow_downward,
+          onPressed: () => s.setSort(s.sort, !s.ascending),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Actions on the ticked items.
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final cs = Theme.of(context).colorScheme;
+    final canEdit = (s.user?.canEdit ?? false) && !s.offline;
+    // just the buttons, left-aligned, a bit taller than the rest (kActionButtonHeight)
+    final tall = ButtonStyle(minimumSize: const WidgetStatePropertyAll(Size(0, kActionButtonHeight)));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      child: Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        OutlinedButton.icon(
+          style: tall,
+          onPressed: () => bulkPin(context, s.selectedItems, true),
+          icon: const Icon(Icons.offline_pin_outlined, size: 16),
+          label: Text(tr('Keep offline')),
+        ),
+        OutlinedButton.icon(
+          style: tall,
+          onPressed: () => bulkPin(context, s.selectedItems, false),
+          icon: const Icon(Icons.phonelink_erase_outlined, size: 16),
+          label: Text(tr('Remove from this device')),
+        ),
+        if (canEdit)
+          OutlinedButton.icon(
+            onPressed: () => bulkTrashFlow(context, s.selectedItems),
+            style: tall.merge(OutlinedButton.styleFrom(foregroundColor: cs.error, iconColor: cs.error)),
+            icon: const Icon(Icons.delete_outline, size: 16),
+            label: Text(tr('Move to trash')),
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              s.applyFilters(
-                type: type,
-                yearFrom: int.tryParse(from.text.trim()),
-                yearTo: int.tryParse(to.text.trim()),
-                language: lang.text,
-                scope: scope,
-              );
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      );
-    }),
-  );
-  from.dispose();
-  to.dispose();
-  lang.dispose();
+        TextButton(style: tall, onPressed: () => s.selectAll(false), child: Text(tr('Clear selection'))),
+      ]),
+    );
+  }
 }

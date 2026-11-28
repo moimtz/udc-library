@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'cache.dart';
+import 'i18n.dart';
 import 'models.dart';
+import 'theme.dart';
 
 class AppState extends ChangeNotifier {
   AppState() {
@@ -22,7 +24,14 @@ class AppState extends ChangeNotifier {
   // settings
   String serverUrl = '';
   ThemeMode themeMode = ThemeMode.system;
-  String udcLang = 'en';
+  AppPalette palette = defaultPalette; // Settings > Palette (theme.dart, kPalettes)
+
+  /// Interface language, also used for the UDC class names and Zotero's labels (Settings > Language).
+  String get udcLang => uiLang;
+
+  /// Width in pixels of the search + tree pane on wide screens, once the divider has been dragged.
+  /// null = the width of the search panel itself (SearchPanel.naturalWidth). Double-click the divider to go back.
+  double? treeWidth;
 
   // server data
   SchemaInfo schema = SchemaInfo.empty();
@@ -33,18 +42,15 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? stats;
   final Set<String> expanded = {};
 
-  // query
-  final TextEditingController searchController = TextEditingController();
-  bool regex = false;
-  bool caseSensitive = false;
-  bool whole = false;
-  String field = 'all';
-  String? udcScope; // class code, 'none' (unclassified) or null (everything)
-  bool includeDesc = true;
-  String? typeFilter;
-  int? yearFrom;
-  int? yearTo;
-  String? languageFilter;
+  // query (search panel). Searching with every box empty shows the whole library.
+  final TextEditingController udcController = TextEditingController(); // "UDC number" box
+  bool udcExact = false;
+  bool includeCancelled = false;
+  final TextEditingController searchController = TextEditingController(); // "Text" box
+  bool textExact = false;
+  final Set<String> fields = {}; // fields searched by the text box; empty = all
+  bool unclassified = false; // "Unclassified" chosen in the tree
+  String? treeSelection; // class highlighted in the tree (the last one clicked)
   String sort = 'title';
   bool ascending = true;
   bool downloadedMode = false;
@@ -58,8 +64,8 @@ class AppState extends ChangeNotifier {
   int? expandedItemId;
   int _ticket = 0;
 
-  bool get hasActiveFilters =>
-      typeFilter != null || yearFrom != null || yearTo != null || languageFilter != null;
+  /// Items ticked in the results (check boxes), for the actions of the selection bar.
+  final Set<int> selectedIds = {};
 
   // ------------------------------------------------------------------ startup / session
   String? startupError;
@@ -71,7 +77,10 @@ class AppState extends ChangeNotifier {
       final themeName = prefs.getString('theme');
       themeMode = ThemeMode.values.firstWhere((m) => m.name == themeName,
           orElse: () => ThemeMode.system);
-      udcLang = prefs.getString('udc_lang') ?? 'en';
+      palette = paletteById(prefs.getString('palette'));
+      // up to v0.1 the language was 'udc_lang' (tree only)
+      setUiLang(prefs.getString('ui_lang') ?? prefs.getString('udc_lang') ?? _systemLang());
+      treeWidth = prefs.getDouble('tree_width');
       await cache.init();
       cache.limitGb = prefs.getDouble('cache_gb') ?? 2;
 
@@ -93,12 +102,17 @@ class AppState extends ChangeNotifier {
         }
       }
     } catch (e, st) {
-      startupError = 'The app could not start.\n\n$e\n\n$st';
+      startupError = '${tr('The app could not start.')}\n\n$e\n\n$st';
       debugPrint('Startup error: $e\n$st');
     } finally {
       booting = false;
       notifyListeners();
     }
+  }
+
+  static String _systemLang() {
+    final l = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    return uiLanguages.containsKey(l) ? l : 'en';
   }
 
   Future<void> login(String url, String username, String password) async {
@@ -132,12 +146,11 @@ class AppState extends ChangeNotifier {
     results = [];
     udc = UdcIndex.empty();
     cancelledIndex = null;
-    udcScope = null;
-    searchController.clear();
+    clearSearchFields();
   }
 
   Future<void> _loadAll() async {
-    schema = await api.schema();
+    schema = await api.schema(lang: zoteroLocale);
     udc = await api.udcTree();
     try {
       stats = await api.stats();
@@ -167,20 +180,19 @@ class AppState extends ChangeNotifier {
   // ------------------------------------------------------------------ query
   Map<String, String> _params() {
     final q = searchController.text;
+    final u = udcController.text;
     return {
       if (q.trim().isNotEmpty) ...{
         'q': q,
-        'field': field,
-        'regex': '$regex',
-        'case': '$caseSensitive',
-        'whole': '$whole',
+        'text_exact': '$textExact',
+        if (fields.isNotEmpty) 'fields': fields.join(','),
       },
-      if (udcScope != null) 'udc': udcScope!,
-      'include_desc': '$includeDesc',
-      if (typeFilter != null) 'type': typeFilter!,
-      if (yearFrom != null) 'year_from': '$yearFrom',
-      if (yearTo != null) 'year_to': '$yearTo',
-      if (languageFilter != null && languageFilter!.isNotEmpty) 'language': languageFilter!,
+      if (u.trim().isNotEmpty) ...{
+        'udc_q': u,
+        'udc_exact': '$udcExact',
+        'udc_cancelled': '$includeCancelled',
+      },
+      if (unclassified) 'udc': 'none',
       'sort': sort,
       'order': ascending ? 'asc' : 'desc',
     };
@@ -202,78 +214,108 @@ class AppState extends ChangeNotifier {
       if (ticket != _ticket) return;
       results = page.items;
       total = page.total;
+      selectedIds.removeWhere((id) => !results.any((r) => r.id == id));
       offline = false;
     } on ApiException catch (e) {
       if (ticket != _ticket) return;
       if (e.status == 400) {
-        searchError = e.message; // e.g. invalid regular expression
+        searchError = tr(e.message);
       } else if (e.isNetwork) {
         offline = true;
         _showCached();
       } else if (e.status == 401) {
         await _clearSession();
       } else {
-        error = e.message;
+        error = tr(e.message);
       }
     }
     if (ticket == _ticket) loading = false;
     notifyListeners();
   }
 
+  /// Offline: a simple filter of the files saved on this device (every word of the text box; the UDC box as
+  /// part of the item's number).
   void _showCached() {
     var list = cache.items;
-    final q = foldText(searchController.text.trim());
-    if (q.isNotEmpty) {
-      list = list
-          .where((i) => foldText('${i.title} ${i.creatorsText} ${i.udcText}').contains(q))
-          .toList();
-    }
+    final words = foldText(searchController.text.trim()).split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final u = udcController.text.replaceAll(' ', '').replaceAll('*', '');
+    list = list.where((i) {
+      final hay = foldText('${i.title} ${i.creatorsText} ${i.udcText}');
+      if (!words.every(hay.contains)) return false;
+      if (u.isEmpty) return true;
+      return udcExact ? i.udc.any((x) => x.notation.replaceAll(' ', '') == u) : i.udcText.contains(u);
+    }).toList();
     list.sort((a, b) => foldText(a.title).compareTo(foldText(b.title)));
     results = list;
     total = list.length;
     loading = false;
   }
 
-  void selectNode(String? code) {
-    udcScope = code;
+  /// A class clicked in the tree goes to the "UDC number" box (free search: it includes its subdivisions)
+  /// and the search runs. 'none' = items without UDC.
+  void selectNode(String code) {
     downloadedMode = false;
-    searchController.clear();
     expandedItemId = null;
+    treeSelection = code;
+    if (code == 'none') {
+      unclassified = true;
+      udcController.clear();
+    } else {
+      unclassified = false;
+      udcController.text = code;
+      udcExact = false;
+    }
     runQuery();
   }
 
-  void clearScope() => selectNode(null);
+  void clearUnclassified() {
+    unclassified = false;
+    if (treeSelection == 'none') treeSelection = null;
+    runQuery();
+  }
 
+  /// "Search" button or Enter.
   void submitSearch() {
     downloadedMode = false;
     expandedItemId = null;
+    unclassified = false;
+    final u = udcController.text.trim();
+    treeSelection = udc.byCode.containsKey(u) ? u : null;
     runQuery();
   }
 
-  void setSearchOption({bool? regex, bool? caseSensitive, bool? whole, String? field}) {
-    if (regex != null) this.regex = regex;
-    if (caseSensitive != null) this.caseSensitive = caseSensitive;
-    if (whole != null) this.whole = whole;
-    if (field != null) this.field = field;
-    if (searchController.text.trim().isNotEmpty) {
-      runQuery();
-    } else {
-      notifyListeners();
-    }
+  /// Empties every box and option of the search panel (does not search).
+  void clearSearchFields() {
+    udcController.clear();
+    searchController.clear();
+    udcExact = false;
+    includeCancelled = false;
+    textExact = false;
+    fields.clear();
+    unclassified = false;
+    treeSelection = null;
   }
 
-  void applyFilters({String? type, int? yearFrom, int? yearTo, String? language, String? scope}) {
-    typeFilter = type;
-    this.yearFrom = yearFrom;
-    this.yearTo = yearTo;
-    languageFilter = (language == null || language.trim().isEmpty) ? null : language.trim();
-    udcScope = scope;
-    downloadedMode = false;
-    expandedItemId = null;
-    runQuery();
+  /// The "clear" button of the search panel header: empties the boxes and options (does not search).
+  void resetSearch() {
+    clearSearchFields();
+    searchError = null;
+    notifyListeners();
   }
 
-  void clearFilters() => applyFilters(scope: udcScope);
+  void setSearchOption({bool? udcExact, bool? includeCancelled, bool? textExact}) {
+    if (udcExact != null) this.udcExact = udcExact;
+    if (includeCancelled != null) this.includeCancelled = includeCancelled;
+    if (textExact != null) this.textExact = textExact;
+    notifyListeners();
+  }
+
+  void setFields(Set<String> f) {
+    fields
+      ..clear()
+      ..addAll(f);
+    notifyListeners();
+  }
 
   void setSort(String s, bool asc) {
     sort = s;
@@ -281,15 +323,16 @@ class AppState extends ChangeNotifier {
     runQuery();
   }
 
-  void setIncludeDesc(bool v) {
-    includeDesc = v;
+  void showDownloaded() {
+    downloadedMode = true;
+    clearSearchFields();
     runQuery();
   }
 
-  void showDownloaded() {
-    downloadedMode = true;
-    udcScope = null;
-    searchController.clear();
+  /// Menu > Library: the whole library again.
+  void showLibrary() {
+    downloadedMode = false;
+    clearSearchFields();
     runQuery();
   }
 
@@ -297,6 +340,20 @@ class AppState extends ChangeNotifier {
     expandedItemId = expandedItemId == id ? null : id;
     notifyListeners();
   }
+
+  // ------------------------------------------------------------------ selection (check boxes)
+  void toggleSelected(int id) {
+    if (!selectedIds.remove(id)) selectedIds.add(id);
+    notifyListeners();
+  }
+
+  void selectAll(bool on) {
+    selectedIds.clear();
+    if (on) selectedIds.addAll(results.map((r) => r.id));
+    notifyListeners();
+  }
+
+  List<Item> get selectedItems => [for (final r in results) if (selectedIds.contains(r.id)) r];
 
   Future<void> reconnect() async {
     try {
@@ -308,27 +365,20 @@ class AppState extends ChangeNotifier {
         await _clearSession();
       } else {
         offline = e.isNetwork;
-        error = e.message;
+        error = tr(e.message);
       }
     }
     notifyListeners();
   }
 
   Future<void> refreshSchema() async {
-    schema = await api.schema();
+    schema = await api.schema(lang: zoteroLocale);
     notifyListeners();
   }
 
   // ------------------------------------------------------------------ tree
   void toggleExpanded(String code) {
     if (!expanded.remove(code)) expanded.add(code);
-    notifyListeners();
-  }
-
-  void expandAll() {
-    expanded
-      ..clear()
-      ..addAll(udc.expandable);
     notifyListeners();
   }
 
@@ -345,24 +395,83 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> itemTrashed(int id) async {
+  /// Optimistic removal: the items leave the results at once. Returns what [putBack] needs to undo it.
+  List<(int, Item)> takeOut(Iterable<int> ids) {
+    final want = ids.toSet();
+    final taken = <(int, Item)>[
+      for (var i = 0; i < results.length; i++)
+        if (want.contains(results[i].id)) (i, results[i])
+    ];
+    results.removeWhere((r) => want.contains(r.id));
+    selectedIds.removeAll(want);
+    if (want.contains(expandedItemId)) expandedItemId = null;
+    total -= taken.length;
+    notifyListeners();
+    return taken;
+  }
+
+  /// Undoes [takeOut] (the server refused): the items go back to their places.
+  void putBack(List<(int, Item)> taken) {
+    for (final (i, item) in taken) {
+      if (results.any((r) => r.id == item.id)) continue;
+      results.insert(i.clamp(0, results.length), item);
+      total++;
+    }
+    notifyListeners();
+  }
+
+  Future<void> itemTrashed(int id, {bool refresh = true}) async {
     results.removeWhere((r) => r.id == id);
+    selectedIds.remove(id);
     total = results.length;
     await cache.removeItem(id);
-    await refreshAfterChange();
+    if (refresh) await refreshAfterChange();
+  }
+
+  /// Storage figures and tree after adding or removing files, without reloading the results list
+  /// (reloading it while a card is open made the card jump).
+  Future<void> refreshStats() async {
+    try {
+      stats = await api.stats();
+      notifyListeners();
+    } catch (_) {}
   }
 
   // ------------------------------------------------------------------ settings
+  Future<void> setPalette(AppPalette p) async {
+    palette = p;
+    notifyListeners();
+    await prefs.setString('palette', p.id);
+  }
+
   Future<void> setTheme(ThemeMode m) async {
     themeMode = m;
     await prefs.setString('theme', m.name);
     notifyListeners();
   }
 
-  Future<void> setUdcLang(String l) async {
-    udcLang = l;
-    await prefs.setString('udc_lang', l);
+  /// Changes the language of the whole interface (also the UDC tree and Zotero's labels).
+  Future<void> changeLanguage(String l) async {
+    setUiLang(l);
+    await prefs.setString('ui_lang', l);
     notifyListeners();
+    try {
+      schema = await api.schema(lang: zoteroLocale);
+      notifyListeners();
+    } catch (_) {} // offline: Zotero's labels change on the next start
+  }
+
+  /// While the divider is dragged (saved by [setTreeWidth] when the drag ends).
+  void previewTreeWidth(double w) {
+    treeWidth = w;
+    notifyListeners();
+  }
+
+  /// Saves the width; null = back to the width of the search panel.
+  Future<void> setTreeWidth(double? w) async {
+    treeWidth = w;
+    notifyListeners();
+    w == null ? await prefs.remove('tree_width') : await prefs.setDouble('tree_width', w);
   }
 
   Future<void> setCacheGb(double gb) async {
@@ -375,6 +484,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     searchController.dispose();
+    udcController.dispose();
     super.dispose();
   }
 }

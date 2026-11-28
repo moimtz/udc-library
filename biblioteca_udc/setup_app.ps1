@@ -16,6 +16,8 @@ if (Test-Path $lib) { Remove-Item $lib -Recurse -Force }
 Copy-Item (Join-Path $root "app\lib") $lib -Recurse -Force
 $tests = Join-Path $build "test"
 if (Test-Path $tests) { Remove-Item $tests -Recurse -Force }
+# widget tests (flutter test): screens drawn at laptop and phone sizes, English and Spanish
+if (Test-Path (Join-Path $root "app\test")) { Copy-Item (Join-Path $root "app\test") $tests -Recurse -Force }
 
 # Android: internet permission, plain-HTTP over Tailscale, app name
 $manifest = Join-Path $build "android\app\src\main\AndroidManifest.xml"

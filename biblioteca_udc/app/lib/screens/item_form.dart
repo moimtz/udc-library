@@ -5,9 +5,13 @@ import 'package:provider/provider.dart';
 
 import '../core/api.dart';
 import '../core/app_state.dart';
+import '../core/i18n.dart';
 import '../core/models.dart';
+import '../core/theme.dart';
+import '../widgets/compact_dropdown.dart';
 import '../widgets/item_tile.dart' show UnconfirmedMark;
-import 'udc_picker.dart';
+import '../widgets/udc_breakdown.dart';
+import '../widgets/udc_builder.dart';
 
 enum AddOutcome { added, skipped, cancelAll }
 
@@ -322,14 +326,14 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       final toExtra = (report['to_extra'] as List?) ?? [];
       final moved = (report['moved'] as List?) ?? [];
       if (!quiet && toExtra.isNotEmpty) {
-        _banner('No field for ${toExtra.map((x) => (x as Map)['label']).join(', ')} in this type: '
-            'moved to Extra.', _Kind.warning, seconds: 10);
+        _banner(tr('No field for {f} in this type: moved to Extra.',
+            {'f': toExtra.map((x) => (x as Map)['label']).join(', ')}), _Kind.warning, seconds: 10);
       } else if (!quiet && moved.isNotEmpty) {
-        _banner('Values moved to the fields of the new type.', _Kind.info, seconds: 5);
+        _banner(tr('Values moved to the fields of the new type.'), _Kind.info, seconds: 5);
       }
       return true;
     } on ApiException catch (e) {
-      if (mounted) _banner('The type could not be changed: ${e.message}', _Kind.error, seconds: 8);
+      if (mounted) _banner(tr('The type could not be changed: {e}', {'e': tr(e.message)}), _Kind.error, seconds: 8);
       return false;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -349,11 +353,11 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         _dups = (r['duplicates'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
         _phase = 'ready';
       });
-      if (_dups.isNotEmpty) _banner('This file may already be in your library.', _Kind.warning);
+      if (_dups.isNotEmpty) _banner(tr('This file may already be in your library.'), _Kind.warning);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _phase = 'error');
-      _banner(e.message, _Kind.error);
+      _banner(tr(e.message), _Kind.error);
     }
   }
 
@@ -379,7 +383,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   Future<void> _autofill() async {
     final s = context.read<AppState>();
     setState(() => _busy = true);
-    _banner('Looking up the bibliographic record...', _Kind.info);
+    _banner(tr('Looking up the bibliographic record...'), _Kind.info);
     String v(String code) => _ctl(code).text.trim();
     final extra = v('extra');
     final arxiv = RegExp(r'arXiv:\s*([\w.\-/]+)', caseSensitive: false).firstMatch('${v('archiveID')}\n$extra');
@@ -411,10 +415,10 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         }
         _addTags([for (final t in (r['tags'] as List?) ?? []) TagValue.fromJson(t)]);
       });
-      _banner('Filled from ${(ident['type'] as String).toUpperCase()} ${ident['value']}. '
-          'Check the fields before saving.', _Kind.success, seconds: 6);
+      _banner(tr('Filled from {id}. Check the fields before saving.',
+          {'id': '${(ident['type'] as String).toUpperCase()} ${ident['value']}'}), _Kind.success, seconds: 6);
     } on ApiException catch (e) {
-      if (mounted) _banner(e.message, _Kind.error, seconds: 8);
+      if (mounted) _banner(tr(e.message), _Kind.error, seconds: 8);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -444,7 +448,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           ? await s.api.analyze(itemId: widget.item!.id, itemType: itemType)
           : await s.api.analyze(tempId: _tempId, itemType: itemType);
     } on ApiException catch (e) {
-      if (mounted) _banner(e.message, _Kind.error, seconds: 8);
+      if (mounted) _banner(tr(e.message), _Kind.error, seconds: 8);
       if (e.status == 503) _checkClassifier();
       return;
     }
@@ -471,20 +475,20 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           break;
         }
         if (st == 'error') {
-          _banner('The analysis failed: ${r['error']}', _Kind.error, seconds: 10);
+          _banner(tr('The analysis failed: {e}', {'e': r['error']}), _Kind.error, seconds: 10);
           break;
         }
         final ahead = ((r['position'] as num?)?.toInt() ?? 0) - 1;
         final text = st == 'queued' && ahead > 0
-            ? 'Waiting for the classifier ($ahead ahead)... You can keep editing.'
+            ? tr('Waiting for the classifier ({n} ahead)... You can keep editing.', {'n': ahead})
             : r['loading'] == true
-                ? 'Loading the classifier model (about 1 min after a pause)... You can keep editing.'
-                : 'Analyzing the PDF (about 30 s, more if it needs OCR)... You can keep editing.';
+                ? tr('Loading the classifier model (about 1 min after a pause)... You can keep editing.')
+                : tr('Analyzing the PDF (about 30 s, more if it needs OCR)... You can keep editing.');
         if (text != last) _banner(last = text, _Kind.info);
         await Future.delayed(const Duration(seconds: 2));
       }
     } on ApiException catch (e) {
-      if (mounted) _banner(e.message, _Kind.error, seconds: 8);
+      if (mounted) _banner(tr(e.message), _Kind.error, seconds: 8);
     } finally {
       if (mounted && _job == job) setState(() => _job = null);
     }
@@ -536,14 +540,14 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           _setCreators(creators);
           filled++;
         } else if (names.join('|').toLowerCase() != have.join('|').toLowerCase()) {
-          _pending.add(_Suggestion('Creators', names.join('; '), () async => setState(() => _setCreators(creators))));
+          _pending.add(_Suggestion(tr('Creators'), names.join('; '), () async => setState(() => _setCreators(creators))));
         }
       }
       _addTags([for (final t in (r['tags'] as List?) ?? []) TagValue.fromJson(t)]);
       final dt = (r['detected_type'] as Map?)?['value'] as String?;
       final dtDef = dt == null ? null : s.schema.type(dt);
       if (dtDef != null && dtDef.enabled && dt != _type) {
-        _pending.add(_Suggestion('Item type', dtDef.label, () async {
+        _pending.add(_Suggestion(tr('Item type'), dtDef.label, () async {
           _typeTouched = true;
           await _changeType(dt!);
         }));
@@ -554,11 +558,12 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     });
     final secs = took.inSeconds;
     final parts = [
-      'Analysis done in $secs s${r['ocr'] == true ? ' (with OCR)' : ''}: $filled field${filled == 1 ? '' : 's'} filled.',
-      if (_pending.isNotEmpty) 'Other values are in the suggestions card.',
-      if (_lowConfidence) 'Low confidence: check the UDC by hand.',
-      if (review.isNotEmpty) 'Check: ${review.join('; ')}.',
-      'Check the marked fields before saving.',
+      tr('Analysis done in {s} s{ocr}: {n} field(s) filled.',
+          {'s': secs, 'ocr': r['ocr'] == true ? tr(' (with OCR)') : '', 'n': filled}),
+      if (_pending.isNotEmpty) tr('Other values are in the suggestions card.'),
+      if (_lowConfidence) tr('Low confidence: check the UDC by hand.'),
+      if (review.isNotEmpty) tr('Check: {x}.', {'x': review.join('; ')}),
+      tr('Check the marked fields before saving.'),
     ];
     _banner(parts.join(' '), _lowConfidence || review.isNotEmpty ? _Kind.warning : _Kind.success, seconds: 15);
   }
@@ -582,13 +587,13 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   String _udcTip(Map<String, dynamic> u) {
     final aux = [
       for (final a in (u['aux'] as List?) ?? [])
-        if (a is Map) '${a['code']}  ${a['label'] ?? ''}${'${a['source']}'.contains('experimental') ? '  (experimental)' : ''}'
+        if (a is Map) '${a['code']}  ${a['label'] ?? ''}${'${a['source']}'.contains('experimental') ? '  (${tr('experimental')})' : ''}'
     ];
     final broader = [for (final b in (u['broader'] as List?) ?? []) '$b'];
     return [
       if ('${u['label'] ?? ''}'.isNotEmpty) '${u['label']}',
       ...aux,
-      if (broader.isNotEmpty) 'Broader: ${broader.join(' > ')}',
+      if (broader.isNotEmpty) '${tr('Broader')}: ${broader.join(' > ')}',
     ].join('\n');
   }
 
@@ -597,7 +602,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     final s = context.read<AppState>();
     final titleField = _typeDef?.titleField ?? 'title';
     if (_ctl(titleField).text.trim().isEmpty) {
-      _banner('${_typeDef?.field(titleField)?.label ?? 'Title'} is required.', _Kind.error, seconds: 5);
+      _banner(tr('{f} is required.', {'f': _typeDef?.field(titleField)?.label ?? tr('Title')}), _Kind.error, seconds: 5);
       return;
     }
     if (!await _checkUdc()) return;
@@ -610,7 +615,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           'regen_citekey': _regenKey,
         });
         if (!mounted) return;
-        _banner('Saved.', _Kind.success);
+        _banner(tr('Saved.'), _Kind.success);
         await Future.delayed(const Duration(milliseconds: 900));
         if (mounted) Navigator.pop(context, it);
       } else {
@@ -622,7 +627,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           if (_replaceId != null) 'replace_id': _replaceId,
         });
         if (!mounted) return;
-        _banner('Added: ${it.citekey}', _Kind.success);
+        _banner(tr('Added: {f}', {'f': it.filename}), _Kind.success);
         await Future.delayed(const Duration(milliseconds: 1500));
         if (mounted) Navigator.pop(context, AddOutcome.added);
       }
@@ -634,9 +639,9 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           _dups = (d['duplicates'] as List).map((x) => Map<String, dynamic>.from(x as Map)).toList();
           _dupAction = 'check';
         });
-        _banner('This looks like a duplicate. Choose what to do below.', _Kind.warning);
+        _banner(tr('This looks like a duplicate. Choose what to do below.'), _Kind.warning);
       } else {
-        _banner(e.message, _Kind.error, seconds: 8);
+        _banner(tr(e.message), _Kind.error, seconds: 8);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -690,18 +695,20 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     _submit();
   }
 
-  /// Adds a class from the tree to the main notation (as a ':' relation) or starts one.
+  /// Number builder (UDC tree) on the main notation; the others, after ' ; ', are kept.
   Future<void> _pickUdc() async {
-    final code = await pickUdc(context);
-    if (code == null || !mounted) return;
     final list = _splitUdc(_udc.text);
+    final code = await buildUdcNumber(context, initial: list.isEmpty ? '' : list.first, doneLabel: tr('Use this number'));
+    if (code == null || !mounted) return;
     setState(() {
       if (list.isEmpty) {
-        _udc.text = code;
+        if (code.isNotEmpty) list.add(code);
+      } else if (code.isEmpty) {
+        list.removeAt(0);
       } else {
-        list[0] = '${list[0]}:$code';
-        _udc.text = list.join(' ; ');
+        list[0] = code;
       }
+      _udc.text = list.join(' ; ');
     });
   }
 
@@ -719,8 +726,8 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final title = _isEdit
-        ? 'Edit fields'
-        : (widget.total > 1 ? 'Add file ${widget.index} of ${widget.total}' : 'Add file');
+        ? tr('Edit fields')
+        : (widget.total > 1 ? tr('Add file {i} of {n}', {'i': widget.index, 'n': widget.total}) : tr('Add file'));
     final subtitle = _isEdit ? widget.item!.filename : widget.file!.name;
 
     final body = _phase == 'uploading'
@@ -730,12 +737,12 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text('Uploading $subtitle...', textAlign: TextAlign.center),
+                child: Text(tr('Uploading {f}...', {'f': subtitle}), textAlign: TextAlign.center),
               ),
             ]),
           )
         : _phase == 'error'
-            ? Center(child: Text('The file could not be uploaded.', style: TextStyle(color: cs.error)))
+            ? Center(child: Text(tr('The file could not be uploaded.'), style: TextStyle(color: cs.error)))
             : LayoutBuilder(builder: (context, c) {
                 final wide = c.maxWidth >= 720;
                 if (wide) {
@@ -781,33 +788,38 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
               if (_isEdit) ...[
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   Checkbox(value: _regenKey, onChanged: _busy ? null : (v) => setState(() => _regenKey = v ?? false)),
-                  const Text('Regenerate citation key and file names'),
+                  Tooltip(
+                    message: tr('Renames the PDF files after the current author, year and title'),
+                    child: Text(tr('Regenerate file names')),
+                  ),
                 ]),
-                TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: Text(tr('Cancel'))),
               ] else ...[
-                TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.cancelAll), child: const Text('Cancel all')),
-                TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.skipped), child: const Text('Skip file')),
+                TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.cancelAll), child: Text(tr('Cancel all'))),
+                TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.skipped), child: Text(tr('Skip file'))),
               ],
               Tooltip(
                 message: _clsAvailable
-                    ? 'Suggest the type, the fields and the UDC from the PDF itself (local AI on the server)'
-                    : (_clsLoading ? 'The classifier is starting on the server. Try again in a minute.' : 'Classifier not available on the server'),
+                    ? tr('Suggest the type, the fields and the UDC from the PDF itself (local AI on the server)')
+                    : (_clsLoading
+                        ? tr('The classifier is starting on the server. Try again in a minute.')
+                        : tr('Classifier not available on the server')),
                 child: OutlinedButton.icon(
                   onPressed: ready && _clsAvailable && _job == null ? _analyze : null,
                   icon: _job != null
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.psychology_outlined, size: 18),
-                  label: Text(_job != null ? 'Analyzing...' : 'Analyze'),
+                  label: Text(_job != null ? tr('Analyzing...') : tr('Analyze')),
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: ready ? _autofill : null,
                 icon: const Icon(Icons.auto_fix_high, size: 18),
-                label: const Text('Fill automatically'),
+                label: Text(tr('Fill automatically')),
               ),
               FilledButton(
                 onPressed: ready && !needsDupChoice ? _submit : null,
-                child: Text(_isEdit ? 'Save' : 'Add'),
+                child: Text(_isEdit ? tr('Save') : tr('Add')),
               ),
             ]),
           ),
@@ -822,7 +834,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         ? s.api.itemPageUrl(widget.item!.id, _coverPage)
         : (_tempId == null ? null : s.api.uploadPageUrl(_tempId!, _coverPage));
     return Column(children: [
-      Text('Cover', style: Theme.of(context).textTheme.titleSmall),
+      Text(tr('Cover'), style: Theme.of(context).textTheme.titleSmall),
       const SizedBox(height: 8),
       ClipRRect(
         borderRadius: BorderRadius.circular(4),
@@ -834,7 +846,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       ),
       const SizedBox(height: 8),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        IconButton(tooltip: 'Previous page', onPressed: _coverPage > 1 ? () => _goToPage(_coverPage - 1) : null, icon: const Icon(Icons.chevron_left)),
+        IconButton(tooltip: tr('Previous page'), onPressed: _coverPage > 1 ? () => _goToPage(_coverPage - 1) : null, icon: const Icon(Icons.chevron_left)),
         SizedBox(
           width: 56,
           child: TextField(
@@ -842,14 +854,14 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             textAlign: TextAlign.center,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+            decoration: const InputDecoration(isDense: true),
             onSubmitted: (v) => _goToPage(int.tryParse(v) ?? 1),
           ),
         ),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: Text('of $_pages')),
-        IconButton(tooltip: 'Next page', onPressed: _coverPage < _pages ? () => _goToPage(_coverPage + 1) : null, icon: const Icon(Icons.chevron_right)),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: Text(tr('of {n}', {'n': _pages}))),
+        IconButton(tooltip: tr('Next page'), onPressed: _coverPage < _pages ? () => _goToPage(_coverPage + 1) : null, icon: const Icon(Icons.chevron_right)),
       ]),
-      Text('This page is used as the cover.', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+      Text(tr('This page is used as the cover.'), style: TextStyle(color: cs.onSurfaceVariant, fontSize: kFsSmall)),
     ]);
   }
 
@@ -864,26 +876,26 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
           Row(children: [
             Icon(Icons.warning_amber_rounded, color: cs.onTertiaryContainer),
             const SizedBox(width: 8),
-            Text('Possible duplicate', style: TextStyle(fontWeight: FontWeight.w600, color: cs.onTertiaryContainer)),
+            Text(tr('Possible duplicate'), style: TextStyle(fontWeight: FontWeight.w600, color: cs.onTertiaryContainer)),
           ]),
           const SizedBox(height: 8),
           for (final d in _dups)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                '${d['reason']}: ${d['title']}'
+                '${tr('${d['reason']}')}: ${d['title']}'
                 '${(d['creators_text'] ?? '').toString().isEmpty ? '' : ' - ${d['creators_text']}'}'
                 '${d['year'] == null ? '' : ' (${d['year']})'}'
-                '${d['in_trash'] == true ? '  [in trash]' : ''}',
+                '${d['in_trash'] == true ? '  [${tr('in trash')}]' : ''}',
                 style: TextStyle(color: cs.onTertiaryContainer),
               ),
             ),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            FilledButton(onPressed: _busy ? null : () => _resolveDuplicate('replace'), child: const Text('Replace existing')),
-            OutlinedButton(onPressed: _busy ? null : () => _resolveDuplicate('keep_both'), child: const Text('Keep both')),
+            FilledButton(onPressed: _busy ? null : () => _resolveDuplicate('replace'), child: Text(tr('Replace existing'))),
+            OutlinedButton(onPressed: _busy ? null : () => _resolveDuplicate('keep_both'), child: Text(tr('Keep both'))),
             if (!_isEdit)
-              TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.skipped), child: const Text('Skip this file')),
+              TextButton(onPressed: _busy ? null : () => Navigator.pop(context, AddOutcome.skipped), child: Text(tr('Skip this file'))),
           ]),
         ]),
       ),
@@ -894,29 +906,21 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
   Widget _form(AppState s) {
     final t = s.schema.type(_type);
     const gap = SizedBox(height: 12);
-    final cs = Theme.of(context).colorScheme;
     // A disabled type is offered only when the item already has it.
     final types = [...s.schema.enabledTypes, if (t != null && !t.enabled) t];
     final fields = [for (final f in t?.fields ?? const <FieldDef>[]) if (!f.hidden) f];
     final titleField = t?.titleField ?? 'title';
-    final udcText = [for (final n in _splitUdc(_udc.text)) s.udc.describe(n, s.udcLang)]
-        .where((x) => x.isNotEmpty)
-        .join('; ');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (!_isEdit && _dups.isNotEmpty) _dupCard(),
       if (_pending.isNotEmpty) _pendingCard(),
-      DropdownButtonFormField<String>(
+      CompactDropdown<String>(
         value: t != null ? _type : null,
-        decoration: InputDecoration(
-          labelText: 'Item type',
-          border: const OutlineInputBorder(),
-          suffixIcon: t == null || t.help.isEmpty ? null : _help(t.help),
-        ),
-        items: [for (final x in types) DropdownMenuItem(value: x.code, child: Text(x.label))],
+        label: tr('Item type'),
+        suffix: t == null || t.help.isEmpty ? null : _help(t.help),
+        options: [for (final x in types) Opt(x.code, x.label)],
         onChanged: _busy
             ? null
             : (v) {
-                if (v == null) return;
                 _typeTouched = true;
                 _changeType(v);
               },
@@ -927,7 +931,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         // Zotero puts the creators right after the title
         if (f.code == titleField) ...[
           gap,
-          Text('Creators', style: Theme.of(context).textTheme.titleSmall),
+          Text(tr('Creators'), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 6),
           for (var i = 0; i < _creators.length; i++) _creatorEditor(i, t),
           Align(
@@ -935,7 +939,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             child: TextButton.icon(
               onPressed: () => setState(() => _creators.add(_CreatorRow(t?.primaryCreator ?? 'author', '', ''))),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add creator'),
+              label: Text(tr('Add creator')),
             ),
           ),
         ],
@@ -947,26 +951,24 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             controller: _udc,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              labelText: 'UDC notation',
-              hintText: '004.8:61   (several: 53 ; 62)',
-              border: const OutlineInputBorder(),
+              labelText: tr('UDC notation'),
+              hintText: tr('004.8:61   (several: 53 ; 62)'),
               prefixIcon: _udcUnconfirmed(),
             ),
           ),
         ),
-        IconButton(tooltip: 'Pick from the UDC tree', onPressed: _pickUdc, icon: const Icon(Icons.account_tree_outlined)),
+        IconButton.outlined(tooltip: tr('Number builder (UDC tree)'), onPressed: _pickUdc, icon: const Icon(Icons.account_tree_outlined)),
       ]),
-      if (udcText.isNotEmpty)
+      if (_udc.text.trim().isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(udcText, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          padding: const EdgeInsets.only(top: 6, left: 4),
+          child: UdcBreakdown(_udc.text, compact: true),
         ),
       if (_udcSugg.isNotEmpty) _udcChips(),
       gap,
       TextField(
         controller: _tags,
-        decoration: const InputDecoration(
-            labelText: 'Tags', hintText: 'Separate tags with ;', border: OutlineInputBorder()),
+        decoration: InputDecoration(labelText: tr('Tags'), hintText: tr('Separate tags with ;')),
       ),
     ]);
   }
@@ -984,10 +986,10 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             Icon(Icons.psychology_outlined, size: 18, color: cs.onSecondaryContainer),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('The classifier suggests other values',
+              child: Text(tr('The classifier suggests other values'),
                   style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSecondaryContainer)),
             ),
-            TextButton(onPressed: () => setState(_pending.clear), child: const Text('Dismiss all')),
+            TextButton(onPressed: () => setState(_pending.clear), child: Text(tr('Dismiss all'))),
           ]),
           for (final p in List.of(_pending))
             Row(children: [
@@ -1002,10 +1004,10 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                         await p.apply();
                         if (mounted) setState(() => _pending.remove(p));
                       },
-                child: const Text('Use'),
+                child: Text(tr('Use')),
               ),
               IconButton(
-                tooltip: 'Dismiss',
+                tooltip: tr('Dismiss'),
                 onPressed: () => setState(() => _pending.remove(p)),
                 icon: const Icon(Icons.close, size: 18),
               ),
@@ -1024,8 +1026,8 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       padding: const EdgeInsets.only(top: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          _lowConfidence ? 'Classifier suggestions (low confidence: check them by hand)' : 'Classifier suggestions',
-          style: TextStyle(fontSize: 12, color: _lowConfidence ? cs.error : cs.onSurfaceVariant),
+          _lowConfidence ? tr('Classifier suggestions (low confidence: check them by hand)') : tr('Classifier suggestions'),
+          style: TextStyle(fontSize: kFsSmall, color: _lowConfidence ? cs.error : cs.onSurfaceVariant),
         ),
         const SizedBox(height: 4),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -1074,13 +1076,12 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       maxLines: long ? 10 : (f.code == 'title' || required ? 3 : 1),
       keyboardType: f.kind == 'url' ? TextInputType.url : (long ? TextInputType.multiline : null),
       decoration: InputDecoration(
-        labelText: '${f.label}${required ? ' *' : ''}${f.obsolete ? ' (no longer in Zotero)' : ''}',
+        labelText: '${f.label}${required ? ' *' : ''}${f.obsolete ? ' (${tr('no longer in Zotero')})' : ''}',
         hintText: switch (f.kind) {
-          'date' => 'e.g. 1998, March 1998, 1998-03-12',
+          'date' => tr('e.g. 1998, March 1998, 1998-03-12'),
           'url' => 'https://...',
-          _ => f.code == 'extra' ? 'One "Name: value" per line, e.g. Type: musical_score' : null,
+          _ => f.code == 'extra' ? tr('One "Name: value" per line, e.g. Type: musical_score') : null,
         },
-        border: const OutlineInputBorder(),
         prefixIcon: automatic
             ? SizedBox(width: 30, child: Center(child: UnconfirmedMark(p.source, p.confidence)))
             : null,
@@ -1105,20 +1106,17 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                   controller: c.last,
                   onChanged: automatic ? (_) => setState(() {}) : null,
                   decoration: InputDecoration(
-                      labelText: single ? 'Name (organization)' : 'Last name',
-                      isDense: true,
-                      border: const OutlineInputBorder()))),
+                      labelText: single ? tr('Name (organization)') : tr('Last name'), isDense: true))),
           if (!single) ...[
             const SizedBox(width: 8),
             Expanded(
                 child: TextField(
                     controller: c.first,
                     onChanged: automatic ? (_) => setState(() {}) : null,
-                    decoration: const InputDecoration(
-                        labelText: 'First name(s)', isDense: true, border: OutlineInputBorder()))),
+                    decoration: InputDecoration(labelText: tr('First name(s)'), isDense: true))),
           ],
           IconButton(
-            tooltip: single ? 'Switch to last name / first name' : 'Switch to a single field (organizations)',
+            tooltip: single ? tr('Switch to last name / first name') : tr('Switch to a single field (organizations)'),
             onPressed: () => setState(() {
               if (single) {
                 c.fieldMode = 0;
@@ -1132,7 +1130,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             icon: Icon(single ? Icons.person_outline : Icons.business_outlined, size: 20),
           ),
           IconButton(
-            tooltip: 'Remove',
+            tooltip: tr('Remove'),
             onPressed: _creators.length > 1
                 ? () => setState(() => _creators.removeAt(i).dispose())
                 : () => setState(() {
@@ -1145,15 +1143,11 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
         const SizedBox(height: 6),
         SizedBox(
           width: 220,
-          child: DropdownButtonFormField<String>(
+          child: CompactDropdown<String>(
             value: value,
-            isDense: true,
-            decoration: const InputDecoration(labelText: 'Role', isDense: true, border: OutlineInputBorder()),
-            items: [
-              for (final r in roles)
-                DropdownMenuItem(value: r.code, child: Tooltip(message: r.help, child: Text(r.label)))
-            ],
-            onChanged: (v) => setState(() => c.creatorType = v ?? c.creatorType),
+            label: tr('Role'),
+            options: [for (final r in roles) Opt(r.code, r.label, tip: r.help)],
+            onChanged: (v) => setState(() => c.creatorType = v),
           ),
         ),
       ]),
@@ -1183,13 +1177,14 @@ class _CancelledUdcDialog extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
       icon: Icon(Icons.history, color: cs.tertiary),
-      title: const Text('Cancelled UDC notation'),
+      title: Text(tr('Cancelled UDC notation')),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('This UDC number uses ${hits.length == 1 ? 'a notation that was' : 'notations that were'} '
-                'cancelled in the UDC. You can replace ${hits.length == 1 ? 'it' : 'them'} or save it as it is.'),
+            Text(hits.length == 1
+                ? tr('This UDC number uses a notation that was cancelled in the UDC. You can replace it or save it as it is.')
+                : tr('This UDC number uses notations that were cancelled in the UDC. You can replace them or save it as it is.')),
             const SizedBox(height: 12),
             for (final h in hits)
               for (final c in h.cancellations)
@@ -1200,18 +1195,18 @@ class _CancelledUdcDialog extends StatelessWidget {
                       TextSpan(
                           text: h.component,
                           style: TextStyle(fontWeight: FontWeight.w700, decoration: TextDecoration.lineThrough)),
-                      TextSpan(text: '  cancelled ${c.when}  ', style: TextStyle(color: cs.onSurfaceVariant)),
+                      TextSpan(text: '  ${tr('cancelled')} ${c.when}  ', style: TextStyle(color: cs.onSurfaceVariant)),
                       TextSpan(text: c.label),
                     ])),
                     const SizedBox(height: 6),
                     if (c.replacedBy.isEmpty)
-                      Text(c.note.isEmpty ? 'No replacement.' : c.note, style: TextStyle(color: cs.onSurfaceVariant))
+                      Text(c.note.isEmpty ? tr('No replacement.') : tr(c.note), style: TextStyle(color: cs.onSurfaceVariant))
                     else
                       Wrap(spacing: 8, runSpacing: 8, children: [
                         for (final r in c.replacedBy)
                           OutlinedButton(
                             onPressed: () => Navigator.pop(context, _replace(h, r.code)),
-                            child: Text(r.exists ? 'Use ${r.code}  ${r.label(lang)}' : 'Use ${r.code}',
+                            child: Text(r.exists ? '${tr('Use')} ${r.code}  ${r.label(lang)}' : '${tr('Use')} ${r.code}',
                                 overflow: TextOverflow.ellipsis),
                           ),
                       ]),
@@ -1221,8 +1216,8 @@ class _CancelledUdcDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back to editing')),
-        FilledButton.tonal(onPressed: () => Navigator.pop(context, udc), child: const Text('Save as it is')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('Back to editing'))),
+        FilledButton.tonal(onPressed: () => Navigator.pop(context, udc), child: Text(tr('Save as it is'))),
       ],
     );
   }
@@ -1238,18 +1233,18 @@ class _FormUdcDialog extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
       icon: Icon(Icons.rule, color: cs.tertiary),
-      title: const Text('Type and UDC form do not match'),
+      title: Text(tr('Type and UDC form do not match')),
       content: SizedBox(
         width: 520,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for (final m in messages) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(m)),
-          Text('Often one of the two was mistyped: change the item type or the UDC, or keep both if they are right.',
+          for (final m in messages) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(tr(m))),
+          Text(tr('Often one of the two was mistyped: change the item type or the UDC, or keep both if they are right.'),
               style: TextStyle(color: cs.onSurfaceVariant)),
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back to editing')),
-        FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: const Text('Save as it is')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('Back to editing'))),
+        FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: Text(tr('Save as it is'))),
       ],
     );
   }
@@ -1264,9 +1259,9 @@ class _BannerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final color = switch (kind) {
-      _Kind.success => const Color(0xFF2E7D32),
+      _Kind.success => paletteOf(context).action,
       _Kind.error => cs.error,
-      _Kind.warning => const Color(0xFFB26A00),
+      _Kind.warning => paletteOf(context).warning,
       _Kind.info => cs.primary,
     };
     return AnimatedSize(

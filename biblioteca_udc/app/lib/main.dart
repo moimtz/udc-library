@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_state.dart';
+import 'core/i18n.dart';
+import 'core/theme.dart';
 import 'screens/home.dart';
 import 'screens/login.dart';
 
@@ -12,15 +15,6 @@ void main() {
   runApp(ChangeNotifierProvider.value(value: state, child: const BibliotecaApp()));
 }
 
-ThemeData _theme(Brightness b) {
-  final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF2F5D62), brightness: b);
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: scheme,
-    visualDensity: VisualDensity.adaptivePlatformDensity,
-  );
-}
-
 class BibliotecaApp extends StatelessWidget {
   const BibliotecaApp({super.key});
 
@@ -28,11 +22,19 @@ class BibliotecaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     return MaterialApp(
-      title: 'Biblioteca UDC',
+      onGenerateTitle: (_) => tr('UDC Library'),
       debugShowCheckedModeBanner: false,
       themeMode: s.themeMode,
-      theme: _theme(Brightness.light),
-      darkTheme: _theme(Brightness.dark),
+      theme: buildTheme(Brightness.light, s.palette),
+      darkTheme: buildTheme(Brightness.dark, s.palette),
+      // Flutter's own texts (Copy, Paste, Back, Cancel of the system dialogs) in the chosen language
+      locale: Locale(uiLang),
+      supportedLocales: [for (final l in uiLanguages.keys) Locale(l)],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: s.booting
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : s.startupError != null

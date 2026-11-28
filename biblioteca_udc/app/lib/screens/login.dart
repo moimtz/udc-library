@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/api.dart';
 import '../core/app_state.dart';
+import '../core/i18n.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (_url.text.trim().isEmpty || _user.text.trim().isEmpty || _pass.text.isEmpty) {
-      setState(() => _error = 'Enter the server address, username and password.');
+      setState(() => _error = tr('Enter the server address, username and password.'));
       return;
     }
     setState(() {
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await context.read<AppState>().login(_url.text, _user.text, _pass.text);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = tr(e.message));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -63,19 +64,18 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Icon(Icons.local_library_outlined, size: 56, color: cs.primary),
               const SizedBox(height: 12),
-              Text('Biblioteca UDC', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
+              Text(tr('UDC Library'), textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 28),
               TextField(
                 controller: _url,
                 keyboardType: TextInputType.url,
-                decoration: const InputDecoration(
-                    labelText: 'Server address', hintText: 'http://100.x.y.z:8765', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Server address'), hintText: 'http://100.x.y.z:8765'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _user,
                 autofillHints: const [AutofillHints.username],
-                decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Username')),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -83,8 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_show,
                 onSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: const OutlineInputBorder(),
+                  labelText: tr('Password'),
                   suffixIcon: IconButton(
                     icon: Icon(_show ? Icons.visibility_off : Icons.visibility),
                     onPressed: () => setState(() => _show = !_show),
@@ -101,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _busy ? null : _submit,
                 child: _busy
                     ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Sign in'),
+                    : Text(tr('Sign in')),
               ),
             ]),
           ),

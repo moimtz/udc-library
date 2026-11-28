@@ -19,6 +19,7 @@ import config
 import library as lib
 import lookup
 import pdfutil
+import search
 import security
 import storage
 import udc
@@ -478,7 +479,14 @@ def list_items(q: str = "", field: str = "all", regex: bool = False, case: bool 
                udc_code: str | None = Query(None, alias="udc"), include_desc: bool = True,
                type: str | None = None, year_from: int | None = None, year_to: int | None = None,
                language: str | None = None, sort: str = "title", order: str = "asc", limit: int = 2000,
+               udc_q: str = "", udc_exact: bool = False, udc_cancelled: bool = False,
+               text_exact: bool | None = None, fields: str = "",
                user=Depends(security.current_user), conn=Depends(get_conn)):
+    """Two ways of searching:
+    - app v0.2+: `udc_q` (+ udc_exact, udc_cancelled) and `q` with `text_exact` (true/false) and `fields`
+      (comma-separated; empty = all). See search.py.
+    - older apps: `udc` (a tree node and its descendants) and `q` with field/regex/case/whole.
+    Both can be mixed with the type/year/language filters and udc=none (unclassified)."""
     sql, args = ["SELECT id FROM items WHERE deleted_at IS NULL"], []
     if type:
         sql.append("AND item_type=?")
@@ -501,7 +509,20 @@ def list_items(q: str = "", field: str = "all", regex: bool = False, case: bool 
         args.extend(sorted(nodes))
     ids = [r[0] for r in conn.execute(" ".join(sql), args)]
     items = lib.load_items(conn, ids, light=True)
-    if q.strip():
+    if udc_q.strip():
+        keep = search.udc_filter(conn, udc_q, exact=udc_exact, include_cancelled=udc_cancelled)
+        kept = []
+        for it in items:
+            spans = keep(it)
+            if spans is not None:
+                if spans:
+                    it.setdefault("matches", {})["udc"] = spans
+                kept.append(it)
+        items = kept
+    if q.strip() and text_exact is not None:
+        wanted = [f.strip() for f in fields.split(",") if f.strip() and f.strip() != "all"]
+        items = lib.run_smart_search(conn, items, search.smart_text_matcher(q, exact=text_exact), wanted)
+    elif q.strip():
         try:
             matcher = lib.build_matcher(q, regex=regex, case=case, whole=whole)
         except lib.SearchError as e:

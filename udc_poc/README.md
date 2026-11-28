@@ -193,6 +193,35 @@ El RDF trae las clases canceladas de UDC Online (`udcx:CancelledClass`: año, E&
 - `tablas_auxiliares`: por tabla, cuántas tenía tu gold, cuántas propuso y cuántas acertó (da precisión y cobertura).
 - `campos`: título (similitud ≥ 0.85), año, idioma y tipo.
 
+### 4.4 Libro de referencia (`books\gold\referencia.xlsx`)
+Los datos correctos de **cada PDF de la colección** (no solo de la muestra gold): UDC completa con
+alternativas aceptadas, datos bibliográficos (tipo Zotero, título, autores, traductores/editores, edición,
+volumen, serie, número, revista, fecha, editorial, lugar, ISBN, DOI, idioma, idioma original) y página de
+portada. Cada fila se identifica por el **SHA-256** del archivo: renombrarlo o moverlo no la rompe.
+- Hoja **Libros**: la verdad; se edita (las columnas grises se calculan: clase principal y auxiliares por
+  tabla). `estado`: `pendiente` · `propuesto` (llenado por una IA o un catálogo, sin revisión humana) ·
+  `verificado` (revisado por una persona) · `dudoso`. `fuente_udc` dice quién decidió la UDC.
+- Hoja **Predicciones**: lo que propuso cada versión del clasificador. Está aparte para revisar a ciegas.
+- Hoja **Resumen**: métricas por versión, una columna por versión (las mismas de `evaluate` más
+  «aceptando alternativas», primer autor y página de portada).
+- Al guardar se escribe también `referencia.csv` (la hoja Libros en texto), que **sí va a git**.
+
+```powershell
+python -m udcpoc reference add books                                   # PDF nuevos -> filas 'pendiente' prellenadas
+python -m udcpoc reference predictions output\results_v0.1.0.json --as v0.1.0
+python -m udcpoc reference evaluate [--solo-verificados]               # -> hoja Resumen
+python -m udcpoc reference export                                      # solo regenera referencia.csv
+```
+Cierra el Excel antes de correrlos. `add` saca lo que puede sin clasificar (nombre del archivo, metadatos,
+ISBN y año del copyright de las primeras páginas, editorial, idioma, primera página con contenido); revisa
+esas filas y pon su UDC. Para comparar una IA nueva: córrela sobre `books`, guarda su `results.json` con
+`predictions --as <nombre>` y vuelve a correr `evaluate`. La importación masiva usa la referencia con
+`bulk_import.py plan ... --gold referencia.csv` (ver `biblioteca_udc\README.md`).
+
+Primera versión (2026-11-27): 175 PDF. 50 UDC de la muestra gold y 125 decididas por Claude (Opus 5.5) a partir
+de la portada, la página legal y el índice, todas comprobadas contra el árbol; datos bibliográficos revisados
+por Claude. Todo queda `propuesto` (salvo la corrección del usuario en Goldberg) hasta que una persona lo revise.
+
 ## 5. Aprendizaje con tus confirmaciones
 Cada confirmación (`review`) se guarda en `data/feedback.db`: embedding del documento + notación final + candidatos. Ante un
 documento nuevo, los vecinos que ya clasificaste **votan** y reponderan candidatos (efecto inmediato). Con ≥ 30

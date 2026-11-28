@@ -14,6 +14,10 @@ another one with a copy of the same PDFs: files are matched by content (SHA-1), 
 What an imported item looks like:
 - every value keeps the source and confidence the classifier gave it and stays NOT confirmed; values you
   edit in the plan, and UDC numbers from your gold file, are saved as typed by a person (confirmed);
+- with --gold referencia.csv (the PoC's reference: one row per PDF, matched by SHA-256) its type, title,
+  creators, date, publisher, ISBN, UDC, cover page... win over the classifier's. Rows marked 'verificado'
+  are saved as confirmed; the rest ('propuesto') with source 'import', not confirmed. A PDF the classifier
+  did not analyse is planned for loading anyway when the reference has it;
 - UDC: suggestion 1 as the main notation; suggestions 2-3 and the classifier's notes go to an item note;
 - tags: the batch tag ('import YYYY-MM-DD', to find or undo the batch) and 'to review' when the plan's
   to_review cell has reasons (low confidence, a key field missing, a UDC form that does not fit the type:
@@ -93,7 +97,7 @@ def creators_text(creators: list[dict]) -> str:
                      for c in creators)
 
 
-def parse_creators(text: str, role: str) -> list[dict]:
+def parse_creators(text: str, role: str, source: str = "manual") -> list[dict]:
     out = []
     for part in (p.strip() for p in (text or "").split(";")):
         if not part:
@@ -101,23 +105,123 @@ def parse_creators(text: str, role: str) -> list[dict]:
         if "," in part:
             last, first = (x.strip() for x in part.split(",", 1))
             out.append({"creator_type": role, "last_name": last, "first_name": first, "field_mode": 0,
-                        "source": "manual"})
+                        "source": source})
         else:   # one-field name (institutions)
             out.append({"creator_type": role, "last_name": part, "first_name": "", "field_mode": 1,
-                        "source": "manual"})
+                        "source": source})
     return out
 
 
 def read_gold(path: Path | None) -> dict[str, dict]:
-    """udc_gold.csv (file,udc,nota) -> {file name (lower case): {udc, note}}."""
+    """Two formats:
+    - udc_gold.csv (file,udc,nota) -> {file name (lower case): {udc, note}};
+    - the PoC's reference (referencia.csv or .xlsx: sha256, archivo, type, title, creators, udc, estado...;
+      see udc_poc/udcpoc/reference.py) -> the whole row, under 'sha:<sha256>' and under the file name."""
     if not path:
         return {}
     if not path.exists():
         raise PlanError(f"Gold file not found: {path}")
-    with path.open(encoding="utf-8-sig", newline="") as fh:
-        return {PureWindowsPath(r["file"]).name.lower(): {"udc": (r.get("udc") or "").strip(),
-                                                          "note": (r.get("nota") or r.get("note") or "").strip()}
-                for r in csv.DictReader(fh) if (r.get("file") or "").strip()}
+    if path.suffix.lower() == ".xlsx":
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
+        if "Libros" not in wb.sheetnames:
+            raise PlanError(f"{path.name} has no 'Libros' sheet (is it the PoC's referencia.xlsx?).")
+        it = wb["Libros"].iter_rows(values_only=True)
+        head = [str(h or "").strip() for h in next(it, [])]
+        rows = [{h: ("" if v is None else str(v).strip()) for h, v in zip(head, r) if h} for r in it]
+    else:
+        with path.open(encoding="utf-8-sig", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    out = {}
+    for r in rows:
+        if r.get("sha256"):   # reference row
+            r = {k: (v or "").strip() for k, v in r.items()}
+            out["sha:" + r["sha256"].lower()] = r
+            if r.get("archivo"):
+                out.setdefault(r["archivo"].lower(), r)
+        elif (r.get("file") or "").strip():
+            out[PureWindowsPath(r["file"]).name.lower()] = {"udc": (r.get("udc") or "").strip(),
+                                                            "note": (r.get("nota") or r.get("note") or "").strip()}
+    return out
+
+
+# reference column -> base field (each item type has its own variant: publicationTitle -> bookTitle...)
+REF_FIELDS = {"edition": "edition", "volume": "volume", "series": "series", "number": "number",
+              "publication": "publicationTitle", "issue": "issue", "pages": "pages", "publisher": "publisher",
+              "place": "place", "ISBN": "ISBN", "DOI": "DOI", "language": "language"}
+
+
+def apply_reference(cat, item: dict, note: str, review: list[str], ref: dict) -> str:
+    """The reference row's values over the classifier's item (they win wherever the row has a value).
+    Rows with estado 'verificado' count as typed by a person (confirmed); the rest ('propuesto': filled by
+    an AI or a catalogue) keep the source 'import' and stay unconfirmed. Returns the item note."""
+    src = "manual" if ref.get("estado") == "verificado" else "import"
+    itype = ref.get("type", "")
+    if itype and itype != item["item_type"]:
+        if itype in cat.types and cat.types[itype]["enabled"]:
+            conv = catalog.convert(cat, item["item_type"], itype,
+                                   {k: {**v, "confirmed": 0} for k, v in item["fields"].items()}, item["creators"])
+            item["fields"] = {k: {kk: vv for kk, vv in v.items() if kk != "confirmed"}
+                              for k, v in conv["fields"].items()}
+            item["creators"], item["item_type"] = conv["creators"], itype
+        else:
+            review.append(f"reference type '{itype}' not available")
+    t = item["item_type"]
+    extra = []
+
+    def put(base: str, value: str, code: str | None = None):
+        if not value:
+            return
+        code = code or (base if cat.allows_field(t, base) else cat.field_for_base(t, base))
+        if code:
+            item["fields"][code] = {"value": value, "source": src}
+        else:
+            extra.append(f"{cat.label('field', base)}: {value}")
+
+    put("title", ref.get("title", ""), lib.title_field(cat, t))
+    put("date", ref.get("date", ""))
+    for col, base in REF_FIELDS.items():
+        put(base, ref.get(col, ""))
+    if extra:
+        old = item["fields"].get("extra", {}).get("value", "")
+        item["fields"]["extra"] = {"value": "\n".join(([old] if old else []) + extra), "source": "import"}
+    if ref.get("creators") or ref.get("contributors"):
+        creators = parse_creators(ref.get("creators", ""), cat.primary_creator(t), src)
+        for part in (p.strip() for p in ref.get("contributors", "").split(";") if p.strip()):
+            m = re.match(r"(.*?)\s*\((\w+)\)$", part)
+            name, role = (m.group(1), m.group(2)) if m else (part, "contributor")
+            if not cat.allows_creator(t, role):
+                role = "contributor" if cat.allows_creator(t, "contributor") else cat.primary_creator(t)
+            creators += parse_creators(name, role, src)
+        item["creators"] = creators
+    lines = []
+    if ref.get("udc"):
+        item["udc"] = [{"notation": ref["udc"], "source": src}]
+        lines.append(f"UDC from the reference ({ref.get('fuente_udc') or 'no source given'}"
+                     f"{', reviewed by a person' if src == 'manual' else ', not reviewed by a person'}).")
+        if ref.get("udc_alternativas"):
+            lines.append(f"Also accepted: {ref['udc_alternativas']}")
+        if ref.get("nota_udc"):
+            lines.append(f"Classification note: {ref['nota_udc']}")
+    if ref.get("observaciones"):
+        lines.append(f"Reference: {ref['observaciones']}")
+    # reasons to review that the reference already answers
+    covered = []
+    if ref.get("title"):
+        covered.append("no title found")
+    if ref.get("creators") or ref.get("contributors"):
+        covered.append("no creators found")
+    if ref.get("date"):
+        covered.append("no date found")
+    if itype and item["item_type"] == itype:
+        covered += ["item type uncertain", "type '"]
+    if ref.get("udc"):
+        covered += ["UDC with low confidence", "no UDC suggestion"]
+    review[:] = [r for r in review if not any(r.startswith(c) for c in covered) and not r.startswith("low confidence")]
+    weak = [k for k, v in item["fields"].items() if (v.get("confidence") or 1) < LOW_FIELD_CONFIDENCE and k != "extra"]
+    if weak:
+        review.append("low confidence: " + ", ".join(weak))
+    return "\n".join(lines + ([note] if note else []))
 
 
 def read_results(path: Path) -> tuple[dict[str, dict], dict[str, dict]]:
@@ -190,7 +294,7 @@ def item_from_record(cat, rec: dict | None, pdf: Path, gold: dict | None) -> tup
     note_lines, udc = [], []
     cls = rec.get("classification") or {}
     sugg = cls.get("suggestions") or []
-    if gold and gold.get("udc"):
+    if gold and gold.get("udc") and "sha256" not in gold:   # reference rows: apply_reference()
         udc = [{"notation": gold["udc"], "source": "manual"}]
         if gold.get("note"):
             note_lines.append(f"Classification note: {gold['note']}")
@@ -213,7 +317,10 @@ def item_from_record(cat, rec: dict | None, pdf: Path, gold: dict | None) -> tup
         if cls.get("note"):
             note_lines.append(f"Classifier: {cls['note']}")
     item = {"item_type": itype, "fields": fields, "creators": creators, "tags": tags, "udc": udc}
-    return item, "\n".join(note_lines), review
+    note = "\n".join(note_lines)
+    if gold and "sha256" in gold:
+        note = apply_reference(cat, item, note, review, gold)
+    return item, note, review
 
 
 def apply_edits(cat, entry: dict, row: dict) -> tuple[dict, int]:
@@ -312,10 +419,18 @@ def cmd_plan(a) -> None:
                                     "sha256": sha256}})
             print(f"[{i}/{len(pdfs)}] {rel}: unreadable PDF ({e})")
             continue
-        item, note, review = item_from_record(cat, rec, pdf, gold.get(pdf.name.lower()))
+        g = gold.get("sha:" + sha256) or gold.get(pdf.name.lower())
+        ref = g if g and "sha256" in g else None
+        item, note, review = item_from_record(cat, rec, pdf, g)
+        if rec is None and ref:
+            review = [r for r in review if r != "not analysed by the classifier"]
         if matched_by_name:
             review.append("matched to the classifier's results by file name only (the file changed?)")
+        if ref and ref["sha256"].lower() != sha256:
+            review.append("matched to the reference by file name only (the file changed?)")
         used_pages = (rec or {}).get("pages_used") or [1]
+        if ref and ref.get("cover_page", "").isdigit():
+            used_pages = [ref["cover_page"]]
         cover = min(max(int(used_pages[0]), 1), pages or 1)
         warnings = [w["message"] for w in coherence.check(conn, item["item_type"],
                                                           [u["notation"] for u in item["udc"]],
@@ -323,7 +438,7 @@ def cmd_plan(a) -> None:
         if warnings:
             review.append("UDC form does not fit the type")
         action, dup = "load", ""
-        if rec is None:
+        if rec is None and not ref:
             action = "skip"
         if sha256 in seen:
             action, dup = "skip", f"same file as {seen[sha256]} in this folder"
@@ -353,7 +468,8 @@ def cmd_plan(a) -> None:
                "creators": creators_text(item["creators"]),
                "date": f.get(cat.field_for_base(item["item_type"], "date") or "date", {}).get("value", ""),
                "udc": " ; ".join(x["notation"] for x in item["udc"]),
-               "udc_source": "gold" if u.get("source") == "manual" else u.get("source", ""),
+               "udc_source": ("reference" if ref and ref.get("udc") else
+                              "gold" if u.get("source") == "manual" else u.get("source", "")),
                "udc_confidence": "" if u.get("confidence") is None else round(u["confidence"], 2),
                "cover_page": cover, "to_review": "; ".join(review), "warnings": " | ".join(warnings),
                "duplicate_of": dup, "citekey": citekey, "sha256": sha256}
@@ -548,7 +664,8 @@ def main(argv=None) -> None:
     p = sub.add_parser("plan", help="make import_plan.xlsx from results.json and a folder of PDFs")
     p.add_argument("results", help="results.json written by 'python -m udcpoc run'")
     p.add_argument("folder", help="folder with the PDFs (subfolders included)")
-    p.add_argument("--gold", help="CSV file,udc,nota with UDC numbers decided by a person (saved as confirmed)")
+    p.add_argument("--gold", help="CSV file,udc,nota with UDC numbers decided by a person (saved as confirmed), "
+                                  "or the PoC's reference (referencia.csv / referencia.xlsx: its values win)")
     p.add_argument("--out", help=f"plan file (default: <folder>\\{PLAN_NAME})")
     p.set_defaults(f=cmd_plan)
     p = sub.add_parser("load", help="create the items marked 'load' in the plan")

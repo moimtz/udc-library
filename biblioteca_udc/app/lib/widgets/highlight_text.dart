@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/models.dart';
+import '../core/theme.dart';
 
 /// Text with search matches painted in a highlight colour.
 class HighlightText extends StatelessWidget {
@@ -18,12 +19,8 @@ class HighlightText extends StatelessWidget {
     if (list == null || list.isEmpty) {
       return Text(text, style: base, maxLines: maxLines, overflow: maxLines == null ? null : TextOverflow.ellipsis);
     }
-    final hl = base.copyWith(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0x99B8860B)
-          : const Color(0xB3FFE082),
-      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-    );
+    final p = paletteOf(context); // colour of the current palette (theme.dart)
+    final hl = base.copyWith(backgroundColor: p.highlight, color: p.text);
     final sorted = [...list]..sort((a, b) => a[0].compareTo(b[0]));
     final children = <TextSpan>[];
     var pos = 0;

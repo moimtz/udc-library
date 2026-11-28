@@ -154,6 +154,44 @@ def test_load(batch, conn):
     assert conn.execute("SELECT count(*) FROM items").fetchone()[0] == 2
 
 
+def test_reference(batch, conn, tmp_path):
+    """The PoC's referencia.csv: matched by SHA-256 (renamed file), its values win; 'verificado' rows are
+    confirmed, 'propuesto' ones are not; a PDF the classifier did not analyse is loaded anyway."""
+    import csv
+
+    def sha(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+
+    ref = tmp_path / "referencia.csv"
+    cols = ["sha256", "archivo", "type", "title", "creators", "contributors", "date", "publisher", "ISBN",
+            "udc", "udc_alternativas", "fuente_udc", "nota_udc", "cover_page", "estado", "observaciones"]
+    with ref.open("w", encoding="utf-8-sig", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=cols)
+        w.writeheader()
+        w.writerow({"sha256": sha(batch["folder"] / "alpha.pdf"), "archivo": "old name.pdf", "type": "book",
+                    "title": "Alpha Physics: An Introduction", "creators": "Smith, Ann; Jones, Bob",
+                    "contributors": "Pérez, Ana (translator)", "date": "2001", "publisher": "Wiley",
+                    "ISBN": "978-0-470-39818-0", "udc": "53(075.8)=111", "udc_alternativas": "530(075.8)=111",
+                    "fuente_udc": "claude-opus-5-5", "cover_page": "1", "estado": "propuesto"})
+        w.writerow({"sha256": sha(batch["folder"] / "lonely.pdf"), "archivo": "lonely.pdf", "type": "thesis",
+                    "title": "Lonely thesis", "creators": "Doe, Jane", "date": "2010", "udc": "53(043.2)",
+                    "estado": "verificado", "cover_page": "1"})
+    bulk_import.main(["plan", str(batch["results"]), str(batch["folder"]), "--gold", str(ref)])
+    rows = _rows(batch["plan"])
+    a, lone = rows["alpha.pdf"], rows["lonely.pdf"]
+    assert a["udc"] == "53(075.8)=111" and a["udc_source"] == "reference" and a["cover_page"] == "1"
+    assert a["title"] == "Alpha Physics: An Introduction" and a["date"] == "2001"
+    assert lone["action"] == "load" and lone["type"] == "thesis" and lone["to_review"] == ""
+    bulk_import.main(["load", str(batch["plan"]), "--user", "ed", "--yes"])
+    items = {it["title"]: it for it in lib.load_items(conn, [r[0] for r in conn.execute("SELECT id FROM items")])}
+    ia, il = items["Alpha Physics: An Introduction"], items["Lonely thesis"]
+    assert ia["udc"][0]["source"] == "import" and not ia["udc"][0]["confirmed"]
+    assert ia["fields"]["publisher"]["value"] == "Wiley" and ia["fields"]["ISBN"]["source"] == "import"
+    assert [c["creator_type"] for c in ia["creators"]] == ["author", "author", "translator"]
+    assert "Also accepted: 530(075.8)=111" in ia["notes"][0]["body"]
+    assert il["udc"][0]["confirmed"] and il["fields"]["title"]["confirmed"] and il["item_type"] == "thesis"
+
+
 def test_load_needs_an_editor(batch, conn):
     bulk_import.main(["plan", str(batch["results"]), str(batch["folder"])])
     with pytest.raises(SystemExit, match="not an active editor"):

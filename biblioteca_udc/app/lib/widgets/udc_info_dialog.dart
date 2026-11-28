@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../core/api.dart';
 import '../core/app_state.dart';
+import '../core/i18n.dart';
 import '../core/models.dart';
+import '../core/theme.dart';
+import 'rich_note.dart';
 
 /// Information window of a UDC class: scope note, application note, information note, including,
 /// examples of combination and "see also". Also used for informative nodes
@@ -71,7 +74,7 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
                 padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (_history.isNotEmpty)
-                    IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back), onPressed: _back)
+                    IconButton(tooltip: tr('Back'), icon: const Icon(Icons.arrow_back), onPressed: _back)
                   else
                     const Padding(
                       padding: EdgeInsets.fromLTRB(12, 12, 4, 0),
@@ -93,7 +96,7 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
                     ),
                   ),
                   IconButton(
-                      tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                      tooltip: tr('Close'), icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ]),
               ),
               if (info != null && info.path.isNotEmpty)
@@ -101,7 +104,7 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
                   child: Text(
                     info.path.map((p) => p.label(lang)).join(' › '),
-                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -122,14 +125,14 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
     if (snap.hasError) {
       final e = snap.error;
       final msg = e is ApiException && e.isNetwork
-          ? 'The server cannot be reached. Class notes are only available online.'
-          : '$e';
+          ? tr('The server cannot be reached. Class notes are only available online.')
+          : tr('$e');
       return Padding(padding: const EdgeInsets.all(24), child: Text(msg));
     }
     final info = snap.data!;
     if (info.isEmpty) {
-      return const Padding(
-          padding: EdgeInsets.all(24), child: Text('There is no additional information for this class.'));
+      return Padding(
+          padding: const EdgeInsets.all(24), child: Text(tr('There is no additional information for this class.')));
     }
     final scope = UdcNodeInfo.inLang(info.scope, lang);
     final app = UdcNodeInfo.inLang(info.app, lang);
@@ -141,20 +144,23 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
         children: [
-          if (scope.isNotEmpty) _Section('Scope note', [for (final t in scope) _Para(t)]),
-          if (app.isNotEmpty) _Section('Application note', [for (final t in app) _Para(t)]),
-          if (infoNote.isNotEmpty) _Section('Information note', [for (final t in infoNote) _Para(t)]),
-          if (including.isNotEmpty) _Section('Including', [for (final t in including) _Para(t)]),
+          if (scope.isNotEmpty) _Section(tr('Scope note'), Icons.crop_free, [for (final t in scope) _Para(t, _open)]),
+          if (app.isNotEmpty)
+            _Section(tr('Application note'), Icons.build_outlined, [for (final t in app) _Para(t, _open)]),
+          if (infoNote.isNotEmpty)
+            _Section(tr('Information note'), Icons.lightbulb_outline, [for (final t in infoNote) _Para(t, _open)]),
+          if (including.isNotEmpty)
+            _Section(tr('Including'), Icons.crop_square, [for (final t in including) _Para(t, _open)]),
           if (examples.isNotEmpty)
-            _Section('Examples of combination', [for (final x in examples) _ExampleRow(x)]),
+            _Section(tr('Examples of combination'), Icons.join_inner, [for (final x in examples) _ExampleRow(x)]),
           if (info.replaces.isNotEmpty || info.earlier.isNotEmpty) _moreInfo(context, info, lang),
           if (info.related.isNotEmpty)
-            _Section('See also', [
+            _Section(tr('See also'), Icons.arrow_forward, [
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final r in info.related)
                   ActionChip(
                     label: Text('${r.code}  ${r.label(lang)}', overflow: TextOverflow.ellipsis),
-                    tooltip: 'Show the information of ${r.code}',
+                    tooltip: tr('Show the information of {c}', {'c': r.code}),
                     onPressed: () => _open(r.code),
                   ),
               ]),
@@ -177,22 +183,22 @@ class _UdcInfoDialogState extends State<_UdcInfoDialog> {
           tilePadding: EdgeInsets.zero,
           childrenPadding: const EdgeInsets.only(left: 4),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          title: Text('More info', style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
+          title: Text(tr('More info'), style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
           subtitle: Text(
             [
-              if (info.replaces.isNotEmpty) '${info.replaces.length} cancelled class(es) now classed here',
-              if (info.earlier.isNotEmpty) 'notation used before with another meaning',
+              if (info.replaces.isNotEmpty) tr('{n} cancelled class(es) now classed here', {'n': info.replaces.length}),
+              if (info.earlier.isNotEmpty) tr('notation used before with another meaning'),
             ].join(' · '),
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant),
           ),
           children: [
             if (info.earlier.isNotEmpty)
-              _Section('Earlier meaning of this notation', [
+              _Section(tr('Earlier meaning of this notation'), Icons.history, [
                 for (final c in info.earlier)
                   _CancellationView(c, lang: lang, onOpen: (code) => _open(code), showCode: false),
               ]),
             if (info.replaces.isNotEmpty)
-              _Section('Replaces cancelled classes', [
+              _Section(tr('Replaces cancelled classes'), Icons.history_toggle_off, [
                 for (final r in info.replaces)
                   InkWell(
                     onTap: () => showCancelledInfo(context, r.code),
@@ -236,23 +242,23 @@ class _CancellationView extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${showCode ? '${c.code}  ' : ''}cancelled ${c.when}',
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        Text('${showCode ? '${c.code}  ' : ''}${tr('cancelled')} ${c.when}',
+            style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant)),
         const SizedBox(height: 2),
         Text(c.label, style: const TextStyle(height: 1.35)),
         if (c.including.isNotEmpty)
-          Text('Including: ${c.including}', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('${tr('Including')}: ${c.including}', style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant)),
         const SizedBox(height: 6),
         if (c.replacedBy.isEmpty)
-          Text(c.note.isEmpty ? 'No replacement' : c.note, style: TextStyle(color: cs.onSurfaceVariant))
+          Text(c.note.isEmpty ? tr('No replacement') : tr(c.note), style: TextStyle(color: cs.onSurfaceVariant))
         else
           Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-            Text('Replaced by', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            Text(tr('Replaced by'), style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant)),
             for (final r in c.replacedBy)
               r.exists
                   ? ActionChip(
                       label: Text('${r.code}  ${r.label(lang)}', overflow: TextOverflow.ellipsis),
-                      tooltip: 'Show the information of ${r.code}',
+                      tooltip: tr('Show the information of {c}', {'c': r.code}),
                       onPressed: () => onOpen(r.code),
                     )
                   : Chip(label: Text(r.code)), // a combination, or a class not in this tree
@@ -260,7 +266,7 @@ class _CancellationView extends StatelessWidget {
         if (c.replacedBy.isNotEmpty && c.note.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(c.note, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            child: Text(c.note, style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant)),
           ),
       ]),
     );
@@ -307,12 +313,12 @@ class _CancelledDialogState extends State<_CancelledDialog> {
                             fontWeight: FontWeight.w700,
                             color: cs.onSurfaceVariant,
                             decoration: TextDecoration.lineThrough)),
-                    const TextSpan(text: 'Cancelled notation'),
+                    TextSpan(text: tr('Cancelled notation')),
                   ]),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              IconButton(tooltip: tr('Close'), icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
             ]),
           ),
           const Divider(height: 1),
@@ -328,8 +334,8 @@ class _CancelledDialogState extends State<_CancelledDialog> {
                   return Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(e is ApiException && e.isNetwork
-                        ? 'The server cannot be reached. This information is only available online.'
-                        : '$e'),
+                        ? tr('The server cannot be reached. This information is only available online.')
+                        : tr('$e')),
                   );
                 }
                 return SelectionArea(
@@ -340,8 +346,8 @@ class _CancelledDialogState extends State<_CancelledDialog> {
                       for (final c in snap.data!)
                         _CancellationView(c,
                             lang: lang, showCode: false, onOpen: (code) => showUdcInfo(context, code)),
-                      Text('Do not use a cancelled notation for new items; use one of the replacing classes.',
-                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                      Text(tr('Do not use a cancelled notation for new items; use one of the replacing classes.'),
+                          style: TextStyle(fontSize: kFsSmall, color: cs.onSurfaceVariant)),
                     ],
                   ),
                 );
@@ -354,32 +360,53 @@ class _CancelledDialogState extends State<_CancelledDialog> {
   }
 }
 
+/// A section of the information window: coloured title with an icon, the text in a soft card.
 class _Section extends StatelessWidget {
   final String title;
+  final IconData icon;
   final List<Widget> children;
-  const _Section(this.title, this.children);
+  const _Section(this.title, this.icon, this.children);
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
+        Row(children: [
+          Icon(icon, size: 16, color: cs.primary),
+          const SizedBox(width: 6),
+          Text(title.toUpperCase(),
+              style: TextStyle(
+                  fontSize: kFsSmall, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: cs.primary)),
+        ]),
         const SizedBox(height: 6),
-        ...children,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(kRadius),
+            border: Border(left: BorderSide(color: cs.primary.withValues(alpha: 0.5), width: 3)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+        ),
       ]),
     );
   }
 }
 
+/// A note: split where it enumerates ("A.", "(a)"), notations painted and tappable (see rich_note.dart).
 class _Para extends StatelessWidget {
   final String text;
-  const _Para(this.text);
+  final void Function(String code) onOpen;
+  const _Para(this.text, this.onOpen);
 
   @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(text, style: const TextStyle(height: 1.35)));
+  Widget build(BuildContext context) {
+    final index = context.read<AppState>().udc;
+    return RichNote(text, exists: (c) => index.byCode.containsKey(c), onCode: onOpen);
+  }
 }
 
 /// "◇ 330.322.014.3   Net investment"

@@ -12,3 +12,4 @@ babel                      # nombres de idiomas, países y meses en cualquier id
 langdetect                 # respaldo de idioma (si falta todo, se usa un detector por stopwords)
 gliner                     # NER zero-shot en CPU para autores/organizaciones (flag --ner)
 # OCR (flag --ocr): usa el programa Tesseract a través de PyMuPDF; no requiere paquete pip (ver README).
+openpyxl                   # libro de referencia books/gold/referencia.xlsx (python -m udcpoc reference)

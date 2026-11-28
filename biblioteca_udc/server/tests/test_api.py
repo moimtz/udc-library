@@ -264,3 +264,43 @@ def test_lookup_results_fit_the_type(monkeypatch, client, conn):
     assert r["fields"]["date"]["value"] == "2019-05"
     assert r["tags"] == [{"name": "Physics", "source": "crossref"}]
     assert lib.parse_date(r["fields"]["date"]["value"]) == "2019-05-00"
+
+
+def test_search_v02(client, add_item, conn):
+    """UDC box (free, exact, cancelled) and text box (words, phrase, OR, exclusion, wildcards, fields)."""
+    a = add_item({"item_type": "book", "fields": {"title": "Redes neuronales profundas", "date": "2010"},
+                  "udc": ["004.8:61(460)"]}).json()
+    b = add_item({"item_type": "book", "fields": {"title": "Física de redes", "publisher": "Reverté"},
+                  "udc": ["53.08"]}).json()
+    c = add_item({"item_type": "book", "fields": {"title": "Old class"}, "udc": ["568.1"]}).json()
+    conn.execute("INSERT INTO udc_cancelled(code, year, ec, label, including, replaced_by, note) "
+                 "VALUES ('568.1', 2011, '', 'old', '', '[\"53.08\"]', '')")
+    conn.commit()
+
+    def ids(**p):
+        return sorted(i["id"] for i in client.get("/api/items", params=p).json()["items"])
+
+    assert ids(udc_q="004") == [a["id"]]                       # subdivisions
+    assert ids(udc_q="61") == [a["id"]]                        # a component after ':'
+    assert ids(udc_q="004.8:61") == [a["id"]]
+    assert ids(udc_q="004.8:62") == []                         # every component must be there
+    assert ids(udc_q="(46)") == [a["id"]]
+    assert ids(udc_q="004.8", udc_exact=True) == []
+    assert ids(udc_q="004.8:61(460)", udc_exact=True) == [a["id"]]
+    assert ids(udc_q="004.8*", udc_exact=True) == [a["id"]]
+    assert ids(udc_q="53") == [b["id"]]
+    assert ids(udc_q="53", udc_cancelled=True) == sorted([b["id"], c["id"]])
+    r = client.get("/api/items", params={"udc_q": "61"}).json()["items"][0]
+    assert r["matches"]["udc"] == [[6, 8]]
+
+    assert ids(q="redes", text_exact=False) == sorted([a["id"], b["id"]])
+    assert ids(q="neuronales redes", text_exact=False) == [a["id"]]          # words in any order
+    assert ids(q='"neuronales redes"', text_exact=False) == []               # phrase keeps the order
+    assert ids(q="redes -fisica", text_exact=False) == [a["id"]]
+    assert ids(q="fisica | old", text_exact=False) == sorted([b["id"], c["id"]])
+    assert ids(q="neuro*", text_exact=False) == [a["id"]]
+    assert ids(q="red", text_exact=True) == []                               # whole words when exact
+    assert ids(q="redes neuronales", text_exact=True) == [a["id"]]
+    assert ids(q="reverte", text_exact=False, fields="publisher") == [b["id"]]
+    assert ids(q="reverte", text_exact=False, fields="title") == []
+    assert ids(q="redes", text_exact=False, udc_q="5") == [b["id"]]          # both boxes together

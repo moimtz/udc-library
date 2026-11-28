@@ -322,6 +322,26 @@ def cmd_evaluate(a):
     Path(a.out).write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def cmd_reference(a):
+    from . import reference as ref
+    path = Path(a.ref) if a.ref else ref.REF_XLSX
+    try:
+        if a.action == "add":
+            ref.add(a.paths or [str(config.BASE_DIR / "books")], path)
+        elif a.action == "predictions":
+            if len(a.paths) != 1 or not a.version:
+                sys.exit("Uso: reference predictions <results.json> --as <versión>")
+            ref.predictions(Path(a.paths[0]), a.version, path)
+        elif a.action == "evaluate":
+            ref.evaluate_ref(Tree.load(config.UDC_RDF, config.LABEL_LANGS), a.solo_verificados, path)
+        else:
+            data = ref.load(path)
+            ref.export_csv(data, path.with_suffix(".csv"))
+            print(f"{len(data['libros'])} filas -> {path.with_suffix('.csv')}")
+    except ref.RefError as e:
+        sys.exit(str(e))
+
+
 def cmd_sample(a):
     """Plan de muestra estratificada: tipo x idioma x (con/sin identificador) x (escaneado)."""
     from collections import defaultdict
@@ -409,5 +429,12 @@ def main():
     s.add_argument("results", nargs="?", default=str(config.OUTPUT_DIR / "results.json"))
     s.add_argument("--gold", default=str(config.OUTPUT_DIR / "gold.csv"))
     s.add_argument("--out", default=str(config.OUTPUT_DIR / "metrics.json")); s.set_defaults(f=cmd_evaluate)
+    s = sp.add_parser("reference", help="libro de referencia books/gold/referencia.xlsx (ver reference.py)")
+    s.add_argument("action", choices=["add", "predictions", "evaluate", "export"])
+    s.add_argument("paths", nargs="*", help="add: carpetas o PDF; predictions: results.json")
+    s.add_argument("--as", dest="version", help="predictions: nombre de la versión (p. ej. v0.1.0)")
+    s.add_argument("--solo-verificados", action="store_true", help="evaluate: solo filas con estado 'verificado'")
+    s.add_argument("--ref", default=None, help="otro archivo de referencia (.xlsx)")
+    s.set_defaults(f=cmd_reference)
     a = ap.parse_args()
     sys.exit(a.f(a) or 0)

@@ -244,6 +244,12 @@ importan desde una carpeta local. El servidor puede seguir encendido. Son dos pa
      parecidos). Para conservar ambos, cambia a `load`.
    - `--gold`: CSV `file,udc,nota` con tus notaciones (como `udc_poc\books\gold\udc_gold.csv`); esas UDC entran
      confirmadas y la nota va a las notas del ítem.
+   - `--gold udc_poc\books\gold\referencia.csv` (o `.xlsx`): el **libro de referencia** del PoC (ver
+     `udc_poc\README.md` §4.4). Se busca cada PDF por su SHA-256 (da igual el nombre) y sus valores ganan a los
+     del clasificador: tipo, título, autores, traductores/editores, fecha, editorial, lugar, ISBN, DOI, UDC,
+     página de portada… (`udc_source` = `reference`). Las filas `verificado` entran confirmadas; las
+     `propuesto` (llenadas por una IA o un catálogo) con fuente `import`, sin confirmar. Un PDF que el
+     clasificador no analizó se planea igual para cargar si la referencia lo tiene.
 3. **Cargar** (con el plan cerrado en Excel):
    ```powershell
    .venv\Scripts\python.exe bulk_import.py load C:\Importar\import_plan.xlsx --user <tu usuario>

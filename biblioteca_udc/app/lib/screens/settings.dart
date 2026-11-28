@@ -3,40 +3,34 @@ import 'package:provider/provider.dart';
 
 import '../core/actions.dart';
 import '../core/app_state.dart';
+import '../core/i18n.dart';
 import '../core/models.dart';
+import '../core/theme.dart';
+import '../widgets/compact_dropdown.dart';
 
-/// Names of some languages in themselves; any other code is shown as it is (e.g. "sv").
-const _langNames = {
-  'ar': 'العربية', 'ca': 'Català', 'cs': 'Čeština', 'de': 'Deutsch', 'el': 'Ελληνικά', 'en': 'English',
-  'es': 'Español', 'fi': 'Suomi', 'fr': 'Français', 'he': 'עברית', 'hr': 'Hrvatski', 'hu': 'Magyar',
-  'it': 'Italiano', 'ja': '日本語', 'ko': '한국어', 'nl': 'Nederlands', 'pl': 'Polski', 'pt': 'Português',
-  'ru': 'Русский', 'sl': 'Slovenščina', 'sv': 'Svenska', 'tr': 'Türkçe', 'uk': 'Українська', 'zh': '中文',
-};
-
-/// The languages come from the tree (whatever the server imported); a class without a name in the chosen
-/// language is shown in English.
-Widget _udcLangTile(AppState s) {
+/// Language of the whole app: menus, help, Zotero's field names and the UDC tree. A UDC class without a name
+/// in that language is shown in English.
+Widget _langTile(AppState s) {
   final langs = s.udc.labelLangs;
   final total = s.udc.byCode.length;
-  final codes = [for (final e in langs) e.key];
-  if (!codes.contains(s.udcLang)) codes.add(s.udcLang); // a saved choice the tree no longer has
-  String pct(String l) {
+  String treePct(String l) {
     final n = langs.where((e) => e.key == l).map((e) => e.value).firstOrNull ?? 0;
-    return total == 0 ? '' : ' (${(100 * n / total).round()}%)';
+    return total == 0 ? '' : tr('UDC tree: {p}% of the classes in this language', {'p': (100 * n / total).round()});
   }
 
   return ListTile(
-    title: const Text('Language of UDC class names'),
-    subtitle: Text(langs.length <= 1
-        ? 'The server has the class names in one language only.'
-        : 'Classes without a name in this language are shown in English.'),
-    trailing: DropdownButton<String>(
-      value: s.udcLang,
-      items: [
-        for (final l in codes)
-          DropdownMenuItem(value: l, child: Text('${_langNames[l] ?? l}${langs.length > 1 ? pct(l) : ''}')),
-      ],
-      onChanged: (v) => v == null ? null : s.setUdcLang(v),
+    title: Text(tr('Language')),
+    subtitle: Text(
+        '${tr('The whole app, the Zotero fields and the UDC tree. Classes without a name in this language are shown in English.')}'
+        '${total == 0 ? '' : '\n${treePct(uiLang)}'}'),
+    isThreeLine: total > 0,
+    trailing: Framed(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: CompactDropdown<String>(
+        value: uiLang,
+        options: [for (final e in uiLanguages.entries) Opt(e.key, e.value)],
+        onChanged: s.changeLanguage,
+      ),
     ),
   );
 }
@@ -59,50 +53,66 @@ class SettingsScreen extends StatelessWidget {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(tr('Settings'))),
       body: ListView(children: [
-        section('Server'),
-        ListTile(title: const Text('Address'), subtitle: Text(s.serverUrl)),
+        section(tr('Server')),
+        ListTile(title: Text(tr('Address')), subtitle: Text(s.serverUrl)),
         if (used != null && max != null)
           ListTile(
-            title: const Text('Server storage'),
+            title: Text(tr('Server storage')),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 LinearProgressIndicator(value: max == 0 ? 0 : (used / max).clamp(0.0, 1.0)),
                 const SizedBox(height: 4),
-                Text('${formatBytes(used)} of ${formatBytes(max)}  (limit set in run_server.bat)'),
+                Text(tr('{u} of {m}  (limit set in run_server.bat)', {'u': formatBytes(used), 'm': formatBytes(max)})),
               ]),
             ),
           ),
-        section('Appearance'),
+        section(tr('Appearance')),
+        _langTile(s),
+        ListTile(
+          title: Text(tr('Palette')),
+          subtitle: Text(tr('Colours of the app; each palette has a light and a dark version.')),
+          trailing: Framed(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: CompactDropdown<String>(
+              value: s.palette.id,
+              options: [for (final p in kPalettes) Opt(p.id, tr(p.name), leading: PaletteSwatch(p))],
+              onChanged: (id) => s.setPalette(paletteById(id)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('System')),
-              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+            segments: [
+              ButtonSegment(value: ThemeMode.system, label: Text(tr('System'))),
+              ButtonSegment(value: ThemeMode.light, label: Text(tr('Light'))),
+              ButtonSegment(value: ThemeMode.dark, label: Text(tr('Dark'))),
             ],
             selected: {s.themeMode},
             onSelectionChanged: (v) => s.setTheme(v.first),
           ),
         ),
-        const SizedBox(height: 12),
-        _udcLangTile(s),
-        section('Offline files on this device'),
+        section(tr('Offline files on this device')),
         ListTile(
-          title: const Text('Cache size limit'),
-          subtitle: const Text('Least recently used files are removed beyond this size. Files marked "Keep offline" are never removed.'),
-          trailing: DropdownButton<double>(
-            value: limit,
-            items: [for (final l in limits) DropdownMenuItem(value: l, child: Text('${l == l.roundToDouble() ? l.toInt() : l} GB'))],
-            onChanged: (v) => v == null ? null : s.setCacheGb(v),
+          title: Text(tr('Cache size limit')),
+          subtitle: Text(tr('Least recently used files are removed beyond this size. Files marked "Keep offline" are never removed.')),
+          trailing: Framed(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: CompactDropdown<double>(
+              value: limit,
+              options: [for (final l in limits) Opt(l, '${l == l.roundToDouble() ? l.toInt() : l} GB')],
+              onChanged: s.setCacheGb,
+            ),
           ),
         ),
         ListTile(
-          title: const Text('In use'),
-          subtitle: Text('Cache: ${formatBytes(s.cache.unpinnedBytes)}   |   Kept offline: ${formatBytes(s.cache.pinnedBytes)}'),
+          title: Text(tr('In use')),
+          subtitle: Text(tr('Cache: {c}   |   Kept offline: {k}',
+              {'c': formatBytes(s.cache.unpinnedBytes), 'k': formatBytes(s.cache.pinnedBytes)})),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -110,26 +120,26 @@ class SettingsScreen extends StatelessWidget {
             OutlinedButton(
               onPressed: () async {
                 await s.cache.clear();
-                if (context.mounted) toast(context, 'Cache cleared. Files kept offline were not touched.');
+                if (context.mounted) toast(context, tr('Cache cleared. Files kept offline were not touched.'));
               },
-              child: const Text('Clear cache'),
+              child: Text(tr('Clear cache')),
             ),
             OutlinedButton(
               onPressed: () async {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Remove all offline files?'),
-                    content: const Text('This also removes the files marked "Keep offline" from this device. They stay on the server.'),
+                    title: Text(tr('Remove all offline files?')),
+                    content: Text(tr('This also removes the files marked "Keep offline" from this device. They stay on the server.')),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove all')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Cancel'))),
+                      FilledButton(style: dangerButton(ctx), onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Remove all'))),
                     ],
                   ),
                 );
                 if (ok == true) await s.cache.clear(includePinned: true);
               },
-              child: const Text('Remove everything'),
+              child: Text(tr('Remove everything')),
             ),
           ]),
         ),

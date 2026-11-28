@@ -655,6 +655,28 @@ def run_search(conn, items: list[dict], matcher, field: str) -> list[dict]:
     return out
 
 
+def run_smart_search(conn, items: list[dict], match, fields: list[str]) -> list[dict]:
+    """Search of the app v0.2+ (search.smart_text_matcher). fields: [] = all; a base field also searches its
+    variants, as in run_search."""
+    if match is None:
+        return items
+    cat = catalog.get(conn)
+    wanted = None
+    if fields:
+        wanted = set()
+        for f in fields:
+            wanted |= cat.variants(f) if f in cat.fields else {f}
+    out = []
+    for it in items:
+        texts = {k: t for k, t in searchable(cat, it).items()
+                 if t and (k in wanted if wanted is not None else k != "citekey")}   # the key is not shown
+        hits = match(texts)
+        if hits is not None:
+            it["matches"] = {**it.get("matches", {}), **hits}
+            out.append(it)
+    return out
+
+
 SORT_SQL = {"title": "sort_title", "author": "sort_creator", "date": "date_sort", "year": "date_sort",
             "added": "added_at"}
 

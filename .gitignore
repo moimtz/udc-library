@@ -1,8 +1,9 @@
 # --- Copyrighted books: never upload ---
-# (the folder's files are ignored, except the blind-review answers file)
+# (the folder's files are ignored, except the blind-review answers and the reference table in text)
 udc_poc/books/**
 !udc_poc/books/**/
 !udc_poc/books/gold/udc_gold.csv
+!udc_poc/books/gold/referencia.csv
 *.pdf
 desktop.ini
 
@@ -53,3 +54,6 @@ Thumbs.db
 **/_anterior_*/
 **/respaldo_*/
 *_respaldo_*
+
+# Saved copy of the UDC Online "Using UDC" page (UDC Consortium content): local reference only
+using_udc_practical_guide/

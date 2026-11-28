@@ -601,7 +601,12 @@ class TreeRow {
   final UdcNode node;
   final int depth;
   final bool hasChildren;
-  TreeRow(this.node, this.depth, this.hasChildren);
+
+  /// Guide lines of the tree: [isLast] = last child of its parent (draws a corner instead of a tee);
+  /// [continues][i] = the ancestor at depth i has siblings below (draws a vertical line in that column).
+  final bool isLast;
+  final List<bool> continues;
+  TreeRow(this.node, this.depth, this.hasChildren, {this.isLast = true, this.continues = const []});
 }
 
 class UdcIndex {
@@ -650,17 +655,22 @@ class UdcIndex {
     final f = foldText(filter.trim());
     final Set<String>? vis = f.isEmpty ? null : _matching(f, lang);
     final out = <TreeRow>[];
-    void walk(String? parent, int depth) {
-      for (final n in children[parent] ?? const <UdcNode>[]) {
-        if (vis != null && !vis.contains(n.code)) continue;
+    void walk(String? parent, int depth, List<bool> continues) {
+      final list = [
+        for (final n in children[parent] ?? const <UdcNode>[])
+          if (vis == null || vis.contains(n.code)) n
+      ];
+      for (var i = 0; i < list.length; i++) {
+        final n = list[i];
+        final last = i == list.length - 1;
         final kids = hasChildren(n.code);
-        out.add(TreeRow(n, depth, kids));
+        out.add(TreeRow(n, depth, kids, isLast: last, continues: continues));
         final open = vis != null ? true : expanded.contains(n.code);
-        if (kids && open) walk(n.code, depth + 1);
+        if (kids && open) walk(n.code, depth + 1, [...continues, !last]);
       }
     }
 
-    walk(null, 0);
+    walk(null, 0, const []);
     return out;
   }
 
